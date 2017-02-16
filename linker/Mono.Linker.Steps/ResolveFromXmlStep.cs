@@ -399,8 +399,7 @@ namespace Mono.Linker.Steps {
 
 		static void ProcessReferences (AssemblyDefinition assembly, LinkContext context)
 		{
-			foreach (AssemblyNameReference name in assembly.MainModule.AssemblyReferences)
-				context.Resolve (name);
+			context.DependenciesFor (assembly);
 		}
 
 		static bool IsRequired (XPathNavigator nav)
