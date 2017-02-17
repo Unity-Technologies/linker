@@ -561,8 +561,6 @@ namespace Mono.Linker.Steps {
 				MarkMethodsIf (type.Methods, HasSerializationAttribute);
 			}
 
-			MarkTypeAdditionalMarking (type);
-
 			DoAdditionalTypeProcessing (type);
 
 			Annotations.Pop ();
@@ -1203,10 +1201,6 @@ namespace Mono.Linker.Steps {
 			default:
 				break;
 			}
-		}
-
-		protected virtual void MarkTypeAdditionalMarking (TypeDefinition type)
-		{
 		}
 
 		protected virtual void MarkMethodAdditionalMarking (MethodDefinition method)
