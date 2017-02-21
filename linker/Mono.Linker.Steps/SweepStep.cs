@@ -203,7 +203,7 @@ namespace Mono.Linker.Steps {
 			return changes;
 		}
 
-		void SweepType (TypeDefinition type)
+		protected virtual void SweepType (TypeDefinition type)
 		{
 			if (type.HasFields)
 				SweepCollection (type.Fields);
@@ -215,7 +215,7 @@ namespace Mono.Linker.Steps {
 				SweepNestedTypes (type);
 		}
 
-		void SweepNestedTypes (TypeDefinition type)
+		protected void SweepNestedTypes (TypeDefinition type)
 		{
 			for (int i = 0; i < type.NestedTypes.Count; i++) {
 				var nested = type.NestedTypes [i];
@@ -275,7 +275,7 @@ namespace Mono.Linker.Steps {
 			}
 		}
 
-		void SweepCollection (IList list)
+		protected void SweepCollection (IList list)
 		{
 			for (int i = 0; i < list.Count; i++)
 				if (!Annotations.IsMarked ((IMetadataTokenProvider) list [i]))
