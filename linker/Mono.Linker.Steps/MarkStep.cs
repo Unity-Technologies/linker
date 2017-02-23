@@ -970,7 +970,6 @@ namespace Mono.Linker.Steps {
 
 			EnqueueMethod (method);
 
-			MarkMethodAdditionalMarking (method);
 
 			Annotations.Pop ();
 			Annotations.AddDependency (method);
@@ -1201,10 +1200,6 @@ namespace Mono.Linker.Steps {
 			default:
 				break;
 			}
-		}
-
-		protected virtual void MarkMethodAdditionalMarking (MethodDefinition method)
-		{
 		}
 
 		protected virtual bool ContinueWith (TypeDefinition type, TypeReference reference)
