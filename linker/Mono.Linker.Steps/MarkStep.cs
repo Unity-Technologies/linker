@@ -970,7 +970,6 @@ namespace Mono.Linker.Steps {
 
 			EnqueueMethod (method);
 
-
 			Annotations.Pop ();
 			Annotations.AddDependency (method);
 
