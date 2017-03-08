@@ -94,6 +94,8 @@ namespace Mono.Linker.Steps {
 
 				if (type.Name == "<Module>")
 					types.Add (type);
+				else
+					ElementRemoved (type);
 			}
 
 			assembly.MainModule.Types.Clear ();
@@ -131,6 +133,7 @@ namespace Mono.Linker.Steps {
 				if (!AreSameReference (r, target.Name))
 					continue;
 
+				ReferenceRemoved (assembly, references [i]);
 				references.RemoveAt (i);
 				// Removing the reference does not mean it will be saved back to disk!
 				// That depends on the AssemblyAction set for the `assembly`
@@ -224,6 +227,7 @@ namespace Mono.Linker.Steps {
 				if (Annotations.IsMarked (nested)) {
 					SweepType (nested);
 				} else {
+					ElementRemoved (type.NestedTypes [i]);
 					type.NestedTypes.RemoveAt (i--);
 				}
 			}
@@ -284,8 +288,10 @@ namespace Mono.Linker.Steps {
 		protected void SweepCollection (IList list)
 		{
 			for (int i = 0; i < list.Count; i++)
-				if (!Annotations.IsMarked ((IMetadataTokenProvider) list [i]))
+				if (!Annotations.IsMarked ((IMetadataTokenProvider) list [i])) {
+					ElementRemoved (list [i]);
 					list.RemoveAt (i--);
+				}
 		}
 
 		protected virtual bool CanChangeScope(TypeReference type)
@@ -305,6 +311,14 @@ namespace Mono.Linker.Steps {
 				return false;
 
 			return true;
+		}
+
+		protected virtual void ElementRemoved (object element)
+		{
+		}
+
+		protected virtual void ReferenceRemoved (AssemblyDefinition assembly, AssemblyNameReference reference)
+		{
 		}
 	}
 }
