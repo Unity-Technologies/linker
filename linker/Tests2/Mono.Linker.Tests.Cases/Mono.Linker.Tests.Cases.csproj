@@ -37,13 +37,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Mono.Linker.Tests.Cases.Core\Mono.Linker.Tests.Cases.Core.csproj">
+    <ProjectReference Include="..\Mono.Linker.Tests.Cases.Expectations\Mono.Linker.Tests.Cases.Expectations.csproj">
       <Project>{2c26601f-3e2f-45b9-a02f-58ee9296e19e}</Project>
-      <Name>Mono.Linker.Tests.Cases.Core</Name>
+      <Name>Mono.Linker.Tests.Cases.Expectations</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Basic\UnusedClassGetsRemoved.cs" />
+    <Compile Include="Basic\UnusedNestedClassGetsRemoved.cs" />
+    <Compile Include="Basic\UnusedStaticMethodGetsRemoved.cs" />
+    <Compile Include="Basic\UnusedVirtualMethodRemoved.cs" />
+    <Compile Include="Basic\UsedVirtualMethodNotRemoved.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

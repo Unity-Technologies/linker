@@ -30,6 +30,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Mono.Cecil">
+      <HintPath>..\..\..\..\external\cecil\Mono.Cecil.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Microsoft.CSharp" />
@@ -37,12 +40,33 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Base\BaseAssertions.cs" />
+    <Compile Include="Base\BaseChecker.cs" />
+    <Compile Include="Base\BaseCompiler.cs" />
+    <Compile Include="Base\BaseLinker.cs" />
+    <Compile Include="Base\BaseLinkerArgumentBuilder.cs" />
+    <Compile Include="Base\BaseObjectFactory.cs" />
+    <Compile Include="Base\BaseTestCaseMetadaProvider.cs" />
+    <Compile Include="Base\BaseTestSandbox.cs" />
+    <Compile Include="DefaultChecker.cs" />
+    <Compile Include="DefaultLinkerArgumentBuilder.cs" />
+    <Compile Include="DefaultTestCaseMetadaProvider.cs" />
+    <Compile Include="DefaultTestSandbox.cs" />
+    <Compile Include="LinkedTestCaseResult.cs" />
+    <Compile Include="LinkXmlHelpers.cs" />
+    <Compile Include="ManagedCompilationResult.cs" />
+    <Compile Include="TestCase.cs" />
+    <Compile Include="TestCaseCollector.cs" />
+    <Compile Include="TestCaseLinkerOptions.cs" />
+    <Compile Include="TestRunner.cs" />
+    <Compile Include="Utils\ExpectationUtils.cs" />
+    <Compile Include="Utils\CecilExtensions.cs" />
     <Compile Include="Utils\NiceIO.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Mono.Linker.Tests.Cases.Core\Mono.Linker.Tests.Cases.Core.csproj">
+    <ProjectReference Include="..\Mono.Linker.Tests.Cases.Expectations\Mono.Linker.Tests.Cases.Expectations.csproj">
       <Project>{2c26601f-3e2f-45b9-a02f-58ee9296e19e}</Project>
-      <Name>Mono.Linker.Tests.Cases.Core</Name>
+      <Name>Mono.Linker.Tests.Cases.Expectations</Name>
     </ProjectReference>
     <ProjectReference Include="..\Mono.Linker.Tests.Cases\Mono.Linker.Tests.Cases.csproj">
       <Project>{b6bee6aa-ada0-4e1d-9a17-fbf2936f82b5}</Project>

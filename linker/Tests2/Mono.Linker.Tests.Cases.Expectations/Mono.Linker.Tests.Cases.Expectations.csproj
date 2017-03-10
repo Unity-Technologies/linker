@@ -7,8 +7,8 @@
     <ProjectGuid>{2C26601F-3E2F-45B9-A02F-58EE9296E19E}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Mono.Linker.Tests.Cases.Core</RootNamespace>
-    <AssemblyName>Mono.Linker.Tests.Cases.Core</AssemblyName>
+    <RootNamespace>Mono.Linker.Tests.Cases.Expectations</RootNamespace>
+    <AssemblyName>Mono.Linker.Tests.Cases.Expectations</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -38,6 +38,10 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="KeptAttribute.cs" />
+    <Compile Include="RemovedAttribute.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
