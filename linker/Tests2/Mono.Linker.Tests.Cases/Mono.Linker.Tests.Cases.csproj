@@ -43,9 +43,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="Basic\UnusedClassGetsRemoved.cs" />
     <Compile Include="Basic\UnusedNestedClassGetsRemoved.cs" />
     <Compile Include="Basic\UnusedStaticMethodGetsRemoved.cs" />

@@ -37,9 +37,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="KeptAttribute.cs" />
     <Compile Include="RemovedAttribute.cs" />
   </ItemGroup>
