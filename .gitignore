@@ -20,6 +20,8 @@ linker/Tests2/Mono.Linker.Tests.Cases/bin/
 linker/Tests2/Mono.Linker.Tests.Cases/obj/
 linker/Tests2/Mono.Linker.Tests.Core/bin/
 linker/Tests2/Mono.Linker.Tests.Core/obj/
+linker/Tests2/Mono.Linker.Tests/bin
+linker/Tests2/Mono.Linker.Tests/obj
 
 
 # Mac crap
