@@ -52,7 +52,8 @@ namespace Mono.Linker.Tests.Core
                 builder.AddLinkXmlFile(linkXmlFile);
 
             builder.AddSearchDirectory(sandbox.InputDirectory);
-            builder.AddSearchDirectory(metadataProvider.ProfileDirectory);
+            foreach (var extraSearchDir in metadataProvider.GetExtraLinkerSearchDirectories())
+                builder.AddSearchDirectory(extraSearchDir);
 
             builder.AddCoreLink(caseDefinedOptions.CoreLink);
 

@@ -19,6 +19,8 @@ namespace Mono.Linker.Tests.Core.Base
 
         public abstract IEnumerable<string> GetReferencedAssemblies();
 
+        public abstract IEnumerable<NPath> GetExtraLinkerSearchDirectories();
+
         public abstract TestCaseLinkerOptions GetLinkerOptions();
     }
 }

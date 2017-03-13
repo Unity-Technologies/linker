@@ -11,25 +11,25 @@ namespace Mono.Linker.Tests.Core
     {
         public override void AddSearchDirectory(NPath directory)
         {
-            Append("d");
+            Append("-d");
             Append(directory.ToString());
         }
 
         public override void AddOutputDirectory(NPath directory)
         {
-            Append("o");
+            Append("-o");
             Append(directory.ToString());
         }
 
         public override void AddLinkXmlFile(NPath path)
         {
-            Append("x");
+            Append("-x");
             Append(path.ToString());
         }
 
         public override void AddCoreLink(string value)
         {
-            Append("c");
+            Append("-c");
             Append(value);
         }
     }

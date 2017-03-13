@@ -31,7 +31,12 @@ namespace Mono.Linker.Tests.Core
 
         public override IEnumerable<string> GetReferencedAssemblies()
         {
-            yield return "mscorlib";
+            yield return "mscorlib.dll";
+        }
+
+        public override IEnumerable<NPath> GetExtraLinkerSearchDirectories()
+        {
+            yield break;
         }
     }
 }

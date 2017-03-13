@@ -7,7 +7,10 @@
             return new DefaultTestSandbox(testCase);
         }
 
-        public abstract BaseCompiler CreateCompiler(TestCase testCase);
+        public virtual BaseCompiler CreateCompiler(TestCase testCase)
+        {
+            return new DefaultCompiler(testCase);
+        }
 
         public abstract BaseLinker CreateLinker(TestCase testCase);
 
