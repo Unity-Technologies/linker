@@ -14,6 +14,12 @@
 # Build results
 linker/obj
 linker/bin
+linker/Tests2/Mono.Linker.Tests.Cases.Expectations/bin/
+linker/Tests2/Mono.Linker.Tests.Cases.Expectations/obj/
+linker/Tests2/Mono.Linker.Tests.Cases/bin/
+linker/Tests2/Mono.Linker.Tests.Cases/obj/
+linker/Tests2/Mono.Linker.Tests.Core/bin/
+linker/Tests2/Mono.Linker.Tests.Core/obj/
 
 
 # Mac crap
