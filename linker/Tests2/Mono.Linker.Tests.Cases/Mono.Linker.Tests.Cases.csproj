@@ -48,6 +48,10 @@
     <Compile Include="Basic\UnusedStaticMethodGetsRemoved.cs" />
     <Compile Include="Basic\UnusedVirtualMethodRemoved.cs" />
     <Compile Include="Basic\UsedVirtualMethodNotRemoved.cs" />
+    <Compile Include="Generics\UsedOverloadedGenericMethodInGenericClassIsNotStripped.cs" />
+    <Compile Include="Generics\UsedOverloadedGenericMethodInstanceInGenericClassIsNotStripped.cs" />
+    <Compile Include="Generics\UsedOverloadedGenericMethodWithNoParametersIsNotStripped.cs" />
+    <Compile Include="VirtualMethods\TypeGetsMarkedThatImplementsAlreadyMarkedInterfaceMethod.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
