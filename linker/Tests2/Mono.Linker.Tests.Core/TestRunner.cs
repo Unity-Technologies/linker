@@ -16,7 +16,7 @@ namespace Mono.Linker.Tests.Core
         {
             var metadataProvider = _factory.CreateMetadatProvider(testCase);
             var sandbox = Sandbox(testCase);
-            var compilationResult = Compile(testCase, sandbox);
+            var compilationResult = Compile(testCase, sandbox, metadataProvider);
             PrepForLink(sandbox, compilationResult);
             var linkResult = Link(testCase, sandbox, compilationResult, metadataProvider);
             Check(testCase, linkResult);
@@ -29,10 +29,10 @@ namespace Mono.Linker.Tests.Core
             return sandbox;
         }
 
-        private ManagedCompilationResult Compile(TestCase testCase, BaseTestSandbox sandbox)
+        private ManagedCompilationResult Compile(TestCase testCase, BaseTestSandbox sandbox, BaseTestCaseMetadaProvider metadataProvider)
         {
             var compiler = _factory.CreateCompiler(testCase);
-            return compiler.CompileTestIn(sandbox);
+            return compiler.CompileTestIn(sandbox, metadataProvider.GetReferencedAssemblies());
         }
 
         private void PrepForLink(BaseTestSandbox sandbox, ManagedCompilationResult compilationResult)

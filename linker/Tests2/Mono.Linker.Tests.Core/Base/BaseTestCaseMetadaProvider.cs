@@ -17,7 +17,7 @@ namespace Mono.Linker.Tests.Core.Base
         // TODO by Mike : Doesn't feel like the best home for this...
         public abstract NPath ProfileDirectory { get; }
 
-        // TODO by Mike: Add methods for getting custom compiler options (i.e. reference an additional assembly)
+        public abstract IEnumerable<string> GetReferencedAssemblies();
 
         public abstract TestCaseLinkerOptions GetLinkerOptions();
     }

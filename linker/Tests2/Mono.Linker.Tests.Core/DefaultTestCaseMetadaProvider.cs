@@ -28,5 +28,10 @@ namespace Mono.Linker.Tests.Core
                 throw new NotImplementedException();
             }
         }
+
+        public override IEnumerable<string> GetReferencedAssemblies()
+        {
+            yield return "mscorlib";
+        }
     }
 }

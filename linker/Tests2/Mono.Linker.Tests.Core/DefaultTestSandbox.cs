@@ -10,8 +10,6 @@ namespace Mono.Linker.Tests.Core
 {
     public class DefaultTestSandbox : BaseTestSandbox
     {
-        private const string EntryPointSourceFileName = "Program.cs";
-
         private readonly NPath _directory;
 
         public DefaultTestSandbox(TestCase testCase)

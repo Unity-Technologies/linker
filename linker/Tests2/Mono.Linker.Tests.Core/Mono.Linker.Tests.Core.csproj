@@ -49,6 +49,7 @@
     <Compile Include="Base\BaseTestCaseMetadaProvider.cs" />
     <Compile Include="Base\BaseTestSandbox.cs" />
     <Compile Include="DefaultChecker.cs" />
+    <Compile Include="DefaultCompiler.cs" />
     <Compile Include="DefaultLinkerArgumentBuilder.cs" />
     <Compile Include="DefaultTestCaseMetadaProvider.cs" />
     <Compile Include="DefaultTestSandbox.cs" />

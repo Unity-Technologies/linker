@@ -1,4 +1,6 @@
-﻿namespace Mono.Linker.Tests.Core.Base
+﻿using System.Collections.Generic;
+
+namespace Mono.Linker.Tests.Core.Base
 {
     public abstract class BaseCompiler
     {
@@ -9,6 +11,6 @@
             _testCase = testCase;
         }
 
-        public abstract ManagedCompilationResult CompileTestIn(BaseTestSandbox sandbox);
+        public abstract ManagedCompilationResult CompileTestIn(BaseTestSandbox sandbox, IEnumerable<string> referencesExternalToSandbox);
     }
 }
