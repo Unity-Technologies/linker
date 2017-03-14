@@ -1,5 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using Mono.Cecil;
+using Mono.Linker.Tests.Cases.Expectations;
 using Mono.Linker.Tests.Core.Utils;
 
 namespace Mono.Linker.Tests.Core
@@ -7,40 +11,33 @@ namespace Mono.Linker.Tests.Core
     public class TestCaseCollector
     {
         private readonly NPath _rootDirectory;
+        private readonly NPath _testCaseAssemblyPath;
 
-        public TestCaseCollector(string rootDirectory)
-            : this(rootDirectory.ToNPath())
+        public TestCaseCollector(string rootDirectory, string testCaseAssemblyPath)
+            : this(rootDirectory.ToNPath(), testCaseAssemblyPath.ToNPath())
         {
         }
 
-        public TestCaseCollector(NPath rootDirectory)
+        public TestCaseCollector(NPath rootDirectory, NPath testCaseAssemblyPath)
         {
             _rootDirectory = rootDirectory;
+            _testCaseAssemblyPath = testCaseAssemblyPath;
         }
 
         public IEnumerable<TestCase> Collect()
         {
             _rootDirectory.DirectoryMustExist();
+            _testCaseAssemblyPath.FileMustExist();
 
             // TODO by Mike : Assert Main() exists
             // TODO by Mike : Skip NotATestCase
 
-            foreach (var file in _rootDirectory.Files("*.cs"))
-                yield return new TestCase(file, FormatTestCaseName(file), _rootDirectory);
-
-            foreach (var subDir in _rootDirectory.Directories())
             {
-                if (subDir.FileName == "bin" || subDir.FileName == "obj" || subDir.FileName == "Properties")
-                    continue;
 
-                foreach (var file in subDir.Files("*.cs", true))
-                    yield return new TestCase(file, FormatTestCaseName(file), _rootDirectory);
             }
         }
 
-        private string FormatTestCaseName(NPath sourceFilePath)
         {
-            return $"{sourceFilePath.RelativeTo(_rootDirectory).Parent.ToString(SlashMode.Forward).Replace('/', '.')}.{sourceFilePath.FileNameWithoutExtension}";
         }
     }
 }
