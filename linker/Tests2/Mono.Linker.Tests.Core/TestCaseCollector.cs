@@ -30,14 +30,59 @@ namespace Mono.Linker.Tests.Core
             _testCaseAssemblyPath.FileMustExist();
 
             // TODO by Mike : Assert Main() exists
-            // TODO by Mike : Skip NotATestCase
 
+            using (var caseAssemblyDefinition = AssemblyDefinition.ReadAssembly(_testCaseAssemblyPath.ToString()))
             {
+                foreach (var file in _rootDirectory.Files("*.cs"))
+                {
+                    TestCase testCase;
+                    if (ProcessSourceFile(caseAssemblyDefinition, file, out testCase))
+                        yield return testCase;
+                }
 
+                foreach (var subDir in _rootDirectory.Directories())
+                {
+                    if (subDir.FileName == "bin" || subDir.FileName == "obj" || subDir.FileName == "Properties")
+                        continue;
+
+                    foreach (var file in subDir.Files("*.cs", true))
+                    {
+                        TestCase testCase;
+                        if (ProcessSourceFile(caseAssemblyDefinition, file, out testCase))
+                            yield return testCase;
+                    }
+                }
             }
         }
 
+        private bool ProcessSourceFile(AssemblyDefinition caseAssemblyDefinition, NPath sourceFile, out TestCase testCase)
         {
+            var potentialCase = new TestCase(sourceFile, _rootDirectory);
+
+            var typeDefinition = FindTypeDefinition(caseAssemblyDefinition, potentialCase);
+
+            if (typeDefinition == null)
+                throw new InvalidOperationException($"Could not find the matching type for test case {sourceFile}.  Ensure the file name and class name match");
+
+            if (typeDefinition.CustomAttributes.Any(ca => ca.Constructor.DeclaringType.Name == nameof(NotATestCaseAttribute)))
+            {
+                testCase = null;
+                return false;
+            }
+
+            testCase = potentialCase;
+            return true;
+        }
+
+        private static TypeDefinition FindTypeDefinition(AssemblyDefinition caseAssemblyDefinition, TestCase testCase)
+        {
+            var typeDefinition = caseAssemblyDefinition.MainModule.GetType(testCase.FullTypeName);
+
+            if (typeDefinition != null)
+                return typeDefinition;
+
+            // TODO by Mike : Is this to hacky?  It's for unity tests to pair up MonoBehaviour.cs which the MonoBehavioir type which has UnityEngine as a namespace
+            return caseAssemblyDefinition.MainModule.Types.FirstOrDefault(t => t.Name == testCase.Name);
         }
     }
 }
