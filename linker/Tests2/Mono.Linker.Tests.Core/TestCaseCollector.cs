@@ -22,6 +22,9 @@ namespace Mono.Linker.Tests.Core
         {
             _rootDirectory.DirectoryMustExist();
 
+            // TODO by Mike : Assert Main() exists
+            // TODO by Mike : Skip NotATestCase
+
             foreach (var file in _rootDirectory.Files("*.cs"))
                 yield return new TestCase(file, FormatTestCaseName(file), _rootDirectory);
 
