@@ -176,12 +176,7 @@ namespace Mono.Linker.Steps {
 			if (regex.Match (exportedType.FullName).Success) {
 				Annotations.Mark (exportedType);
 				Annotations.Mark (module);
-				TypeDefinition type = null;
-				try {
-					type = exportedType.Resolve ();
-				}
-				catch (AssemblyResolutionException) {
-				}
+				var type = exportedType.Resolve ();
 				if (type != null) {
 					ProcessType (type, nav);
 				}
