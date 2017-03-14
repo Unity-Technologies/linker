@@ -55,7 +55,7 @@ namespace Mono.Linker.Tests.Core
 
         private bool ProcessSourceFile(AssemblyDefinition caseAssemblyDefinition, NPath sourceFile, out TestCase testCase)
         {
-            var potentialCase = new TestCase(sourceFile, _rootDirectory);
+            var potentialCase = new TestCase(sourceFile, _rootDirectory, _testCaseAssemblyPath);
 
             var typeDefinition = FindTypeDefinition(caseAssemblyDefinition, potentialCase);
 

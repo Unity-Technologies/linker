@@ -5,9 +5,10 @@ namespace Mono.Linker.Tests.Core
 {
     public class TestCase
     {
-        public TestCase(NPath sourceFile, NPath rootCasesDirectory)
+        public TestCase(NPath sourceFile, NPath rootCasesDirectory, NPath originalTestCaseAssemblyPath)
         {
             SourceFile = sourceFile;
+            OriginalTestCaseAssemblyPath = originalTestCaseAssemblyPath;
             Name = sourceFile.FileNameWithoutExtension;
             DisplayName = $"{sourceFile.RelativeTo(rootCasesDirectory).Parent.ToString(SlashMode.Forward).Replace('/', '.')}.{sourceFile.FileNameWithoutExtension}"; ;
 
@@ -21,6 +22,8 @@ namespace Mono.Linker.Tests.Core
         public string DisplayName { get; }
 
         public NPath SourceFile { get; }
+
+        public NPath OriginalTestCaseAssemblyPath { get; }
 
         public string FullTypeName { get; }
 

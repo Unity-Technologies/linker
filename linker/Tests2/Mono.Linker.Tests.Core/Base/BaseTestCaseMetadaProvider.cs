@@ -22,5 +22,7 @@ namespace Mono.Linker.Tests.Core.Base
         public abstract IEnumerable<NPath> GetExtraLinkerSearchDirectories();
 
         public abstract TestCaseLinkerOptions GetLinkerOptions();
+
+        public abstract bool IsIgnored(out string reason);
     }
 }

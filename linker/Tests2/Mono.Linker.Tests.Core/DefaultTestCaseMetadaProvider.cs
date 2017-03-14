@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Mono.Cecil;
+using Mono.Linker.Tests.Cases.Expectations;
 using Mono.Linker.Tests.Core.Base;
 using Mono.Linker.Tests.Core.Utils;
 
@@ -37,6 +39,29 @@ namespace Mono.Linker.Tests.Core
         public override IEnumerable<NPath> GetExtraLinkerSearchDirectories()
         {
             yield break;
+        }
+
+        public override bool IsIgnored(out string reason)
+        {
+            using (var def = AssemblyDefinition.ReadAssembly(_testCase.OriginalTestCaseAssemblyPath.ToString()))
+            {
+                var typeDef = def.MainModule.GetType(_testCase.FullTypeName);
+
+                if (typeDef == null)
+                    throw new InvalidOperationException($"Could not find the type definition for {_testCase.Name} in {_testCase.SourceFile}");
+
+                if (typeDef.CustomAttributes.Any(ca => ca.Constructor.DeclaringType.Name == nameof(IgnoreTestCaseAttribute)))
+                {
+                    // TODO by Mike : Implement obtaining the real reason
+                    reason = "TODO : Need to implement parsing reason";
+                    return true;
+                }
+                else
+                {
+                    reason = null;
+                    return false;
+                }
+            }
         }
     }
 }
