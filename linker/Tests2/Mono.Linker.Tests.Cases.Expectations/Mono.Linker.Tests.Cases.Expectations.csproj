@@ -37,8 +37,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IgnoreTestCaseAttribute.cs" />
     <Compile Include="KeptAttribute.cs" />
+    <Compile Include="NotATestCaseAttribute.cs" />
     <Compile Include="RemovedAttribute.cs" />
+    <Compile Include="SandboxDependencyAttribute.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

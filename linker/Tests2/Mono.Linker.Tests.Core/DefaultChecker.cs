@@ -32,6 +32,10 @@ namespace Mono.Linker.Tests.Core
                 TypeDefinition linkedType = linked.MainModule.GetType(originalType.FullName);
 
                 CheckDefinition(originalType, linkedType, "Type");
+
+                // TODO by Mike : Fix: SHould not continue just because the linked type is gone.  What if the linked type was mistakenly
+                // removed and there are still methods/fields on that type that we should be asserting
+
                 if (linkedType == null)
                     continue;
 
