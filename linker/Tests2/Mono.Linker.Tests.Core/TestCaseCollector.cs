@@ -29,8 +29,6 @@ namespace Mono.Linker.Tests.Core
             _rootDirectory.DirectoryMustExist();
             _testCaseAssemblyPath.FileMustExist();
 
-            // TODO by Mike : Assert Main() exists
-
             using (var caseAssemblyDefinition = AssemblyDefinition.ReadAssembly(_testCaseAssemblyPath.ToString()))
             {
                 foreach (var file in _rootDirectory.Files("*.cs"))
@@ -69,6 +67,15 @@ namespace Mono.Linker.Tests.Core
                 testCase = null;
                 return false;
             }
+
+            // Verify the class as a static main method
+            var mainMethod = typeDefinition.Methods.FirstOrDefault(m => m.Name == "Main");
+
+            if (mainMethod == null)
+                throw new InvalidOperationException($"{typeDefinition} in {sourceFile} is missing a Main() method");
+
+            if (!mainMethod.IsStatic)
+                throw new InvalidOperationException($"The Main() method for {typeDefinition} in {sourceFile} should be static");
 
             testCase = potentialCase;
             return true;
