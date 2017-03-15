@@ -2,9 +2,7 @@
 
 namespace Mono.Linker.Tests.Cases.Expectations
 {
-	/// <summary>
-	/// This is filling the same role as the NotLinked attribute used by Mono.Linker.Tests today.
-	/// </summary>
+	// TODO by Mike : Rename to AssertRemoved?
 	public class RemovedAttribute : Attribute
 	{
 	}

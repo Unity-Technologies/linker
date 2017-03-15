@@ -43,16 +43,25 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Basic\UninvokedInterfaceMemberGetsRemoved.cs" />
+    <Compile Include="Basic\UnusedFieldGetsRemoved.cs" />
+    <Compile Include="Future\DeadCodeElimination1.cs" />
+    <Compile Include="Future\FieldThatOnlyGetsSetIsRemoved.cs" />
+    <Compile Include="Interop\FieldsOfTypeMarkedSequentialLayoutAreNotRemoved.cs" />
+    <Compile Include="Interop\UnusedTypeWithSequentialLayoutIsRemoved.cs" />
+    <Compile Include="VirtualMethods\HarderToDetectUnusedVirtualMethodGetsRemoved.cs" />
     <Compile Include="Basic\UnusedClassGetsRemoved.cs" />
     <Compile Include="Basic\UnusedNestedClassGetsRemoved.cs" />
-    <Compile Include="Basic\UnusedStaticMethodGetsRemoved.cs" />
-    <Compile Include="Basic\UnusedVirtualMethodRemoved.cs" />
-    <Compile Include="Basic\UsedVirtualMethodNotRemoved.cs" />
+    <Compile Include="Statics\UnusedStaticMethodGetsRemoved.cs" />
+    <Compile Include="VirtualMethods\UnusedVirtualMethodRemoved.cs" />
+    <Compile Include="VirtualMethods\UsedVirtualMethodNotRemoved.cs" />
     <Compile Include="Generics\UsedOverloadedGenericMethodInGenericClassIsNotStripped.cs" />
     <Compile Include="Generics\UsedOverloadedGenericMethodInstanceInGenericClassIsNotStripped.cs" />
     <Compile Include="Generics\UsedOverloadedGenericMethodWithNoParametersIsNotStripped.cs" />
+    <Compile Include="Statics\UnusedStaticConstructorGetsRemoved.cs" />
     <Compile Include="VirtualMethods\TypeGetsMarkedThatImplementsAlreadyMarkedInterfaceMethod.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

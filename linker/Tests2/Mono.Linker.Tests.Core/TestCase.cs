@@ -5,10 +5,12 @@ namespace Mono.Linker.Tests.Core
 {
     public class TestCase
     {
-        public TestCase(NPath sourceFile, string name, NPath rootCasesDirectory)
+        public TestCase(NPath sourceFile, NPath rootCasesDirectory, NPath originalTestCaseAssemblyPath)
         {
             SourceFile = sourceFile;
-            Name = name;
+            OriginalTestCaseAssemblyPath = originalTestCaseAssemblyPath;
+            Name = sourceFile.FileNameWithoutExtension;
+            DisplayName = $"{sourceFile.RelativeTo(rootCasesDirectory).Parent.ToString(SlashMode.Forward).Replace('/', '.')}.{sourceFile.FileNameWithoutExtension}"; ;
 
             // A little hacky, but good enough for name.  No reason why namespace & type names
             // should not follow the directory structure
@@ -17,7 +19,11 @@ namespace Mono.Linker.Tests.Core
 
         public string Name { get; }
 
+        public string DisplayName { get; }
+
         public NPath SourceFile { get; }
+
+        public NPath OriginalTestCaseAssemblyPath { get; }
 
         public string FullTypeName { get; }
 

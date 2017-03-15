@@ -19,5 +19,10 @@ namespace Mono.Linker.Tests.CoreIntegration
         {
             Assert.IsTrue(value, message);
         }
+        
+        public override void Ignore(string reason)
+        {
+            Assert.Ignore(reason);
+        }
     }
 }

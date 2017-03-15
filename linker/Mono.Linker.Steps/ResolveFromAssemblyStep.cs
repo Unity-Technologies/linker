@@ -95,8 +95,14 @@ namespace Mono.Linker.Steps {
 
 					if (!isForwarder)
 						continue;
-					var resolvedExportedType = exported.Resolve ();
-					context.Resolve (resolvedExportedType.Scope);
+					TypeDefinition resolvedExportedType = null;
+					try {
+						resolvedExportedType = exported.Resolve ();
+					}
+					catch (AssemblyResolutionException) {
+						continue;
+					}
+					var resolvedTypeAssembly = context.Resolve (resolvedExportedType.Scope);
 					MarkType (context, resolvedExportedType);
 					context.Annotations.Mark (exported);
 					if (context.KeepTypeForwarderOnlyAssemblies) {

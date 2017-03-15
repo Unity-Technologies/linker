@@ -14,12 +14,18 @@ namespace Mono.Linker.Tests.Core
 
         public void Run(TestCase testCase)
         {
+            var assertions = _factory.CreateAssertions();
             var metadataProvider = _factory.CreateMetadatProvider(testCase);
+
+            string ignoreReason;
+            if (metadataProvider.IsIgnored(out ignoreReason))
+                assertions.Ignore(ignoreReason);
+
             var sandbox = Sandbox(testCase);
             var compilationResult = Compile(testCase, sandbox, metadataProvider);
             PrepForLink(sandbox, compilationResult);
             var linkResult = Link(testCase, sandbox, compilationResult, metadataProvider);
-            Check(testCase, linkResult);
+            Check(testCase, assertions, linkResult);
         }
 
         private BaseTestSandbox Sandbox(TestCase testCase)
@@ -62,9 +68,9 @@ namespace Mono.Linker.Tests.Core
             return new LinkedTestCaseResult { InputAssemblyPath = compilationResult.AssemblyPath, LinkedAssemblyPath = sandbox.OutputDirectory.Combine(compilationResult.AssemblyPath.FileName) };
         }
 
-        private void Check(TestCase testCase, LinkedTestCaseResult linkResult)
+        private void Check(TestCase testCase, BaseAssertions assertions, LinkedTestCaseResult linkResult)
         {
-            var checker = _factory.CreateChecker(testCase, _factory.CreateAssertions());
+            var checker = _factory.CreateChecker(testCase, assertions);
 
             checker.Check(linkResult);
         }
