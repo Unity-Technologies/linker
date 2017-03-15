@@ -43,6 +43,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Basic\InterfaceMethodImplementedOnBaseClassDoesNotGetStripped.cs" />
     <Compile Include="Basic\UninvokedInterfaceMemberGetsRemoved.cs" />
     <Compile Include="Basic\UnusedFieldGetsRemoved.cs" />
     <Compile Include="Future\DeadCodeElimination1.cs" />
