@@ -14,8 +14,17 @@ namespace Mono.Linker.Tests.NUnitIntegration
         {
             get
             {
-                var testsAssembly = new Uri(typeof(TestDatabase).Assembly.CodeBase).LocalPath.ToNPath();
-                return testsAssembly.Parent.Parent.Parent.Parent.Combine("Mono.Linker.Tests.Cases").DirectoryMustExist();
+                var testsAssemblyPath = new Uri(typeof(TestDatabase).Assembly.CodeBase).LocalPath.ToNPath();
+                return testsAssemblyPath.Parent.Parent.Parent.Parent.Combine("Mono.Linker.Tests.Cases").DirectoryMustExist();
+            }
+        }
+
+        private static NPath TestCaseAssemblyPath
+        {
+            get
+            {
+                // TODO by Mike : Clean up path finding by referencing the assembly?
+                return RootTestCaseDirectory.Combine("bin", "Debug", "Mono.Linker.Tests.Cases.dll");
             }
         }
 
@@ -26,16 +35,16 @@ namespace Mono.Linker.Tests.NUnitIntegration
 
         public static IEnumerable AllTestCases(NPath rootTestCaseDirectory)
         {
-            var testCases = new TestCaseCollector(rootTestCaseDirectory.ToString());
+            var testCases = new TestCaseCollector(rootTestCaseDirectory, TestCaseAssemblyPath);
             return MakeTestCasesForProfile(testCases.Collect().ToArray());
         }
 
         private static IEnumerable<TestCaseData> MakeTestCasesForProfile(TestCase[] testCases)
         {
-            foreach (var test in testCases.OrderBy(t => t.Name))
+            foreach (var test in testCases.OrderBy(t => t.DisplayName))
             {
                 var data = new TestCaseData(test);
-                data.SetName(test.Name);
+                data.SetName(test.DisplayName);
                 yield return data;
             }
         }
