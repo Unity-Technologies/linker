@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Mono.Linker.Tests.Cases.Expectations
+namespace Mono.Linker.Tests.Cases.Expectations.Assertions
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class IgnoreTestCaseAttribute : Attribute

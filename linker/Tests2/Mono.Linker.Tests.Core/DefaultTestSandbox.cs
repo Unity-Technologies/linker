@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Mono.Linker.Tests.Cases.Expectations;
+using Mono.Linker.Tests.Cases.Expectations.Assertions;
 using Mono.Linker.Tests.Core.Base;
 using Mono.Linker.Tests.Core.Utils;
 

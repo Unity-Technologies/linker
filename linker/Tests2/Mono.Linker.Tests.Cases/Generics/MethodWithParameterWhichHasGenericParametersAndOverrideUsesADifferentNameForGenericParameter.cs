@@ -1,4 +1,4 @@
-﻿using Mono.Linker.Tests.Cases.Expectations;
+﻿using Mono.Linker.Tests.Cases.Expectations.Assertions;
 
 namespace Mono.Linker.Tests.Cases.Generics
 {
