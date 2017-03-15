@@ -8,31 +8,57 @@ namespace Mono.Linker.Tests.Core.Utils
 {
     public static class CecilExtensions
     {
-        public static IEnumerable<TypeDefinition> AllTypes(this ModuleDefinition module)
+        public static IEnumerable<TypeDefinition> AllDefinedTypes(this AssemblyDefinition assemblyDefinition)
         {
-            foreach (var type in module.Types)
+            return assemblyDefinition.Modules.SelectMany(m => m.AllDefinedTypes());
+        }
+
+        public static IEnumerable<TypeDefinition> AllDefinedTypes(this ModuleDefinition moduleDefinition)
+        {
+            foreach (var typeDefinition in moduleDefinition.Types)
             {
-                yield return type;
-                if (type.HasNestedTypes)
-                {
-                    foreach (var nestedType in type.NestedTypes)
-                        yield return nestedType;
-                }
+                yield return typeDefinition;
+
+                foreach (var definition in typeDefinition.AllDefinedTypes())
+                    yield return definition;
+            }
+        }
+
+        public static IEnumerable<TypeDefinition> AllDefinedTypes(this TypeDefinition typeDefinition)
+        {
+            foreach (var nestedType in typeDefinition.NestedTypes)
+            {
+                yield return nestedType;
+
+                foreach (var definition in nestedType.AllDefinedTypes())
+                    yield return definition;
             }
         }
 
         public static IEnumerable<IMemberDefinition> AllMembers(this ModuleDefinition module)
         {
-            foreach (var type in module.AllTypes())
+            foreach (var type in module.AllDefinedTypes())
             {
                 yield return type;
 
-                foreach (var field in type.Fields)
-                    yield return field;
-
-                foreach (var method in type.Methods)
-                    yield return method;
+                foreach (var member in type.AllMembers())
+                    yield return member;
             }
+        }
+
+        public static IEnumerable<IMemberDefinition> AllMembers(this TypeDefinition type)
+        {
+            foreach (var field in type.Fields)
+                yield return field;
+
+            foreach (var prop in type.Properties)
+                yield return prop;
+
+            foreach (var method in type.Methods)
+                yield return method;
+
+            foreach (var @event in type.Events)
+                yield return @event;
         }
 
         public static bool HasAttribute(this ICustomAttributeProvider provider, string name)
@@ -54,6 +80,15 @@ namespace Mono.Linker.Tests.Core.Utils
                 return true;
 
             return type.BaseType.Resolve().DerivesFrom(baseTypeName);
+        }
+
+        public static string GetFullName(this IMemberDefinition memberDefinition)
+        {
+            var methoDef = memberDefinition as MethodReference;
+            if (methoDef != null)
+                return methoDef.GetFullName();
+
+            return memberDefinition.FullName;
         }
 
         public static string GetFullName(this MethodReference method)

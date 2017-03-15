@@ -41,7 +41,7 @@ namespace Mono.Linker.Tests.Core
 
         protected virtual void CompareAssemblies(AssemblyDefinition original, AssemblyDefinition linked)
         {
-            var membersToAssert = original.MainModule.AllMembers().Where(m => m.HasAttributeDerivedFrom(nameof(BaseExpectedLinkedBehaviorAttribute))).ToArray();
+            var membersToAssert = CollectMembersToAssert(original).ToArray();
             foreach (var originalMember in membersToAssert)
             {
                 if (originalMember is TypeDefinition)
@@ -52,13 +52,20 @@ namespace Mono.Linker.Tests.Core
                 else if (originalMember is FieldDefinition)
                 {
                     TypeDefinition linkedType = linked.MainModule.GetType(originalMember.DeclaringType.FullName);
-                    CheckTypeMember(originalMember, linkedType, "Field", () => linkedType.Fields, f => f.FullName);
+                    CheckTypeMember(originalMember, linkedType, "Field", () => linkedType.Fields);
                 }
                 else if (originalMember is MethodDefinition)
                 {
                     var originalMethodDef = (MethodDefinition) originalMember;
                     TypeDefinition linkedType = linked.MainModule.GetType(originalMember.DeclaringType.FullName);
-                    CheckTypeMember(originalMethodDef, linkedType, "Method", () => linkedType.Methods, m => m.GetFullName());
+                    CheckTypeMember(originalMethodDef, linkedType, "Method", () => linkedType.Methods);
+                }
+                else if (originalMember is PropertyDefinition)
+                {
+                    // TODO by Mike : Need to implement.
+                    //  * Process the GetMethod().  It could have assert attributes.  Also need to respect an assert attribute on the PropertyDefinition
+                    //  * Process the SetMethod().  It could have assert attributes.  Also need to respect an assert attribute on the PropertyDefinition
+                    throw new NotImplementedException("Checking of properties has not been implemented yet");
                 }
                 else
                 {
@@ -66,12 +73,15 @@ namespace Mono.Linker.Tests.Core
                 }
             }
 
-            // This is a safety check to help reduce false positive passes.  A test could pass if there was a bug in the checking logic that never made an assert.  This check is here
+            // These are safety checks to help reduce false positive passes.  A test could pass if there was a bug in the checking logic that never made an assert.  This check is here
             // to make sure we make the number of assertions that we expect
+            if (membersToAssert.Length == 0)
+                _realAssertions.Fail($"Did not find any assertions to make.  Does the test case define any assertions to make?  Or there may be a bug in the collection of assertions to make");
+
             AssertNonCounted.AreEqual(_assertionCounter.AssertionsMade, membersToAssert.Length, $"Expected to make {membersToAssert.Length} assertions, but only made {_assertionCounter.AssertionsMade}.  The test may be invalid or there may be a bug in the checking logic");
         }
 
-        protected virtual void CheckTypeMember<T>(T originalMember, TypeDefinition linkedParentTypeDefinition, string definitionTypeName, Func<IEnumerable<T>> getLinkedMembers, Func<T, string> getName) where T : IMemberDefinition
+        protected virtual void CheckTypeMember<T>(T originalMember, TypeDefinition linkedParentTypeDefinition, string definitionTypeName, Func<IEnumerable<T>> getLinkedMembers) where T : IMemberDefinition
         {
             if (originalMember.ShouldBeRemoved())
             {
@@ -83,8 +93,8 @@ namespace Mono.Linker.Tests.Core
                 }
                 else
                 {
-                    var originalName = getName(originalMember);
-                    var linkedMember = getLinkedMembers().FirstOrDefault(linked => getName(linked) == originalName);
+                    var originalName = originalMember.GetFullName();
+                    var linkedMember = getLinkedMembers().FirstOrDefault(linked => linked.GetFullName() == originalName);
                     Assert.IsNull(linkedMember, $"{definitionTypeName}: `{originalMember}' should have been removed");
                 }
 
@@ -97,8 +107,8 @@ namespace Mono.Linker.Tests.Core
                 // even if the test case didn't request it otherwise we are just going to hit a null reference exception when we try to get the members on the type
                 _realAssertions.IsNotNull(linkedParentTypeDefinition, $"{definitionTypeName}: `{originalMember}' should have been kept, but the entire parent type was removed {originalMember.DeclaringType}");
 
-                var originalName = getName(originalMember);
-                var linkedMember = getLinkedMembers().FirstOrDefault(linked => getName(linked) == originalName);
+                var originalName = originalMember.GetFullName();
+                var linkedMember = getLinkedMembers().FirstOrDefault(linked => linked.GetFullName() == originalName);
                 Assert.IsNotNull(linkedMember, $"{definitionTypeName}: `{originalMember}' should have been kept");
             }
         }
@@ -114,6 +124,52 @@ namespace Mono.Linker.Tests.Core
             if (original.ShouldBeKept())
             {
                 Assert.IsNotNull(linked, $"Type: `{original}' should have been kept");
+            }
+        }
+
+        private IEnumerable<IMemberDefinition> CollectMembersToAssert(AssemblyDefinition original)
+        {
+            var membersWithAssertAttributes = original.MainModule.AllMembers().Where(m => m.HasAttributeDerivedFrom(nameof(BaseExpectedLinkedBehaviorAttribute)));
+
+            // Some of the assert attributes on classes flag methods that are not in the .cs for checking.  We need to collection the member definitions for these
+            foreach (var member in membersWithAssertAttributes)
+            {
+                // For now, only support types of attributes on Types.
+                var typeDefinition = member as TypeDefinition;
+
+                if (typeDefinition == null)
+                {
+                    // The expandable attributes can only go on types, so if this member is not a type it must be something else that only supports the self assertions
+                    yield return member;
+                    continue;
+                }
+
+                if (member.HasSelfAssertions())
+                    yield return member;
+
+                // Check if the type definition only has self assertions, if so, no need to continue to trying to expand the other assertions
+                if (member.CustomAttributes.Count == 1)
+                    continue;
+
+                foreach (var attr in member.CustomAttributes)
+                {
+                    if (attr.IsSelfAssertion())
+                        continue;
+
+
+                    var name = (string)attr.ConstructorArguments.First().Value;
+
+                    if (string.IsNullOrEmpty(name))
+                        throw new ArgumentNullException($"Value cannot be null on {attr.AttributeType} on {member}");
+
+                    IMemberDefinition matchedDefinition = typeDefinition.AllMembers().FirstOrDefault(m => m.GetFullName().EndsWith(name));
+
+                    if (matchedDefinition == null)
+                        throw new InvalidOperationException($"Could not find member {name} on type {typeDefinition}");
+
+                    // TODO by Mike : How to make sure what we return is now flagged for Kept/Removed?
+                    throw new NotImplementedException();
+                }
             }
         }
 
@@ -158,7 +214,13 @@ namespace Mono.Linker.Tests.Core
 
             public override void AreEqual(object expected, object actual, string message)
             {
-                throw new NotSupportedException();
+                Bump();
+                _realAssertions.AreEqual(expected, actual, message);
+            }
+
+            public override void Fail(string message)
+            {
+                _realAssertions.Fail(message);
             }
         }
     }

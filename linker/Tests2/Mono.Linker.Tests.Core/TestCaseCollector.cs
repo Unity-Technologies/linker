@@ -62,7 +62,7 @@ namespace Mono.Linker.Tests.Core
             if (typeDefinition == null)
                 throw new InvalidOperationException($"Could not find the matching type for test case {sourceFile}.  Ensure the file name and class name match");
 
-            if (typeDefinition.CustomAttributes.Any(ca => ca.Constructor.DeclaringType.Name == nameof(NotATestCaseAttribute)))
+            if (typeDefinition.HasAttribute(nameof(NotATestCaseAttribute)))
             {
                 testCase = null;
                 return false;
@@ -89,7 +89,24 @@ namespace Mono.Linker.Tests.Core
                 return typeDefinition;
 
             // TODO by Mike : Is this to hacky?  It's for unity tests to pair up MonoBehaviour.cs which the MonoBehavioir type which has UnityEngine as a namespace
-            return caseAssemblyDefinition.MainModule.Types.FirstOrDefault(t => t.Name == testCase.Name);
+            foreach (var type in caseAssemblyDefinition.MainModule.Types)
+            {
+                //  Let's assume we should never have to search for a test case that has no namespace.  If we don't find the type from GetType, then o well, that's not a test case.
+                if (string.IsNullOrEmpty(type.Namespace))
+                    continue;
+
+                if (type.Name == testCase.Name)
+                {
+                    // TODO by Mike : This is really hacky.  Maybe there is a way to improve it by getting the debug information and if that knows about the source
+                    // file location we could check to see if that source file matches the testCase.SourceFile.
+                    if (!testCase.SourceFile.ReadAllText().Contains($"namespace {type.Namespace}"))
+                        continue;
+
+                    return type;
+                }
+            }
+
+            return null;
         }
     }
 }
