@@ -18,10 +18,5 @@ namespace Mono.Linker.Tests.Core.Utils
         {
             return provider.HasAttribute(nameof(KeptAttribute));
         }
-
-        private static bool HasAttribute(this ICustomAttributeProvider provider, string name)
-        {
-            return provider.CustomAttributes.Any(ca => ca.Constructor.DeclaringType.Name == name);
-        }
     }
 }

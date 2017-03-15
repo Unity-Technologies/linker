@@ -39,6 +39,7 @@
   <ItemGroup>
     <Compile Include="Assertions\IgnoreTestCaseAttribute.cs" />
     <Compile Include="Assertions\KeptAttribute.cs" />
+    <Compile Include="Assertions\BaseExpectedLinkedBehaviorAttribute.cs" />
     <Compile Include="Metadata\NotATestCaseAttribute.cs" />
     <Compile Include="Assertions\RemovedAttribute.cs" />
     <Compile Include="Metadata\SandboxDependencyAttribute.cs" />

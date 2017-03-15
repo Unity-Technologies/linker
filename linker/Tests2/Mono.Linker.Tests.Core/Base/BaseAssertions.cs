@@ -9,5 +9,7 @@
         public abstract void IsTrue(bool value, string message);
 
         public abstract void Ignore(string reason);
+
+        public abstract void AreEqual(object expected, object actual, string message);
     }
 }

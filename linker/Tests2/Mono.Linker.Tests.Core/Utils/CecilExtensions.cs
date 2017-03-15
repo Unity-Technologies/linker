@@ -21,6 +21,41 @@ namespace Mono.Linker.Tests.Core.Utils
             }
         }
 
+        public static IEnumerable<IMemberDefinition> AllMembers(this ModuleDefinition module)
+        {
+            foreach (var type in module.AllTypes())
+            {
+                yield return type;
+
+                foreach (var field in type.Fields)
+                    yield return field;
+
+                foreach (var method in type.Methods)
+                    yield return method;
+            }
+        }
+
+        public static bool HasAttribute(this ICustomAttributeProvider provider, string name)
+        {
+            return provider.CustomAttributes.Any(ca => ca.AttributeType.Name == name);
+        }
+
+        public static bool HasAttributeDerivedFrom(this ICustomAttributeProvider provider, string name)
+        {
+            return provider.CustomAttributes.Any(ca => ca.AttributeType.Resolve().DerivesFrom(name));
+        }
+
+        public static bool DerivesFrom(this TypeDefinition type, string baseTypeName)
+        {
+            if (type.BaseType == null)
+                return false;
+
+            if (type.BaseType.Name == baseTypeName)
+                return true;
+
+            return type.BaseType.Resolve().DerivesFrom(baseTypeName);
+        }
+
         public static string GetFullName(this MethodReference method)
         {
             if (!method.HasGenericParameters)
