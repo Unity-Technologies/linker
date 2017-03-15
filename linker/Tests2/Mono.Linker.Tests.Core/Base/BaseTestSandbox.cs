@@ -22,6 +22,6 @@ namespace Mono.Linker.Tests.Core.Base
 
         public abstract IEnumerable<NPath> LinkXmlFiles { get; }
 
-        public abstract void Populate();
+        public abstract void Populate(BaseTestCaseMetadaProvider metadataProvider);
     }
 }

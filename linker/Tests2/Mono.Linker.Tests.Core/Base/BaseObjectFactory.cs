@@ -1,4 +1,6 @@
-﻿namespace Mono.Linker.Tests.Core.Base
+﻿using Mono.Cecil;
+
+namespace Mono.Linker.Tests.Core.Base
 {
     public abstract class BaseObjectFactory
     {
@@ -19,9 +21,9 @@
             return new DefaultChecker(testCase, assertions);
         }
 
-        public virtual BaseTestCaseMetadaProvider CreateMetadatProvider(TestCase testCase)
+        public virtual BaseTestCaseMetadaProvider CreateMetadatProvider(TestCase testCase, AssemblyDefinition fullTestCaseAssemblyDefinition)
         {
-            return new DefaultTestCaseMetadaProvider(testCase);
+            return new DefaultTestCaseMetadaProvider(testCase, fullTestCaseAssemblyDefinition);
         }
 
         public abstract BaseAssertions CreateAssertions();

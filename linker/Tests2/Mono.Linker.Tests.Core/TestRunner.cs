@@ -1,4 +1,5 @@
 ﻿using System;
+using Mono.Cecil;
 using Mono.Linker.Tests.Core.Base;
 
 namespace Mono.Linker.Tests.Core
@@ -14,24 +15,27 @@ namespace Mono.Linker.Tests.Core
 
         public void Run(TestCase testCase)
         {
-            var assertions = _factory.CreateAssertions();
-            var metadataProvider = _factory.CreateMetadatProvider(testCase);
+            using (var fullTestCaseAssemblyDefinition = AssemblyDefinition.ReadAssembly(testCase.OriginalTestCaseAssemblyPath.ToString()))
+            {
+                var assertions = _factory.CreateAssertions();
+                var metadataProvider = _factory.CreateMetadatProvider(testCase, fullTestCaseAssemblyDefinition);
 
-            string ignoreReason;
-            if (metadataProvider.IsIgnored(out ignoreReason))
-                assertions.Ignore(ignoreReason);
+                string ignoreReason;
+                if (metadataProvider.IsIgnored(out ignoreReason))
+                    assertions.Ignore(ignoreReason);
 
-            var sandbox = Sandbox(testCase);
-            var compilationResult = Compile(testCase, sandbox, metadataProvider);
-            PrepForLink(sandbox, compilationResult);
-            var linkResult = Link(testCase, sandbox, compilationResult, metadataProvider);
-            Check(testCase, assertions, linkResult);
+                var sandbox = Sandbox(testCase, metadataProvider);
+                var compilationResult = Compile(testCase, sandbox, metadataProvider);
+                PrepForLink(sandbox, compilationResult);
+                var linkResult = Link(testCase, sandbox, compilationResult, metadataProvider);
+                Check(testCase, assertions, linkResult);
+            }
         }
 
-        private BaseTestSandbox Sandbox(TestCase testCase)
+        private BaseTestSandbox Sandbox(TestCase testCase, BaseTestCaseMetadaProvider metadataProvider)
         {
             var sandbox = _factory.CreateSandbox(testCase);
-            sandbox.Populate();
+            sandbox.Populate(metadataProvider);
             return sandbox;
         }
 

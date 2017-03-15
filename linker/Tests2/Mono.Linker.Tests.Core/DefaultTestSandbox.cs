@@ -59,7 +59,7 @@ namespace Mono.Linker.Tests.Core
             get { return InputDirectory.Files("*.xml"); }
         }
 
-        public override void Populate()
+        public override void Populate(BaseTestCaseMetadaProvider metadataProvider)
         {
             _testCase.SourceFile.Copy(_directory);
 
@@ -67,6 +67,11 @@ namespace Mono.Linker.Tests.Core
                 _testCase.LinkXmlFile.Copy(_directory);
 
             GetExpectationsAssemblyPath().Copy(InputDirectory);
+
+            foreach (var dep in metadataProvider.AdditionalFilesToSandbox())
+            {
+                dep.FileMustExist().Copy(_directory);
+            }
         }
 
         private static NPath GetExpectationsAssemblyPath()
