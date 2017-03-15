@@ -51,6 +51,7 @@
     <Compile Include="Basic\UnusedPropertyGetsRemoved.cs" />
     <Compile Include="Future\DeadCodeElimination1.cs" />
     <Compile Include="Future\FieldThatOnlyGetsSetIsRemoved.cs" />
+    <Compile Include="Generics\GenericInstanceInterfaceMethodImplementedWithDifferentGenericArgumentNameDoesNotGetStripped.cs" />
     <Compile Include="Generics\MethodWithParameterWhichHasGenericParametersAndOverrideUsesADifferentNameForGenericParameter.cs" />
     <Compile Include="Generics\OverrideWithAnotherVirtualMethodOfSameNameWithDifferentParameterType.cs" />
     <Compile Include="Interop\FieldsOfTypeMarkedSequentialLayoutAreNotRemoved.cs" />
