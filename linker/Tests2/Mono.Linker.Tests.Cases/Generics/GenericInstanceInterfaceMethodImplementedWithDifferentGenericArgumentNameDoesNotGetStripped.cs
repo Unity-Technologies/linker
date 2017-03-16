@@ -2,30 +2,30 @@
 
 namespace Mono.Linker.Tests.Cases.Generics
 {
-    class GenericInstanceInterfaceMethodImplementedWithDifferentGenericArgumentNameDoesNotGetStripped
-    {
-        public static void Main()
-        {
-            ISomething it = new Concrete();
-            it.ShouldNotGetStripped<int>();
-        }
+	class GenericInstanceInterfaceMethodImplementedWithDifferentGenericArgumentNameDoesNotGetStripped
+	{
+		public static void Main()
+		{
+			ISomething it = new Concrete();
+			it.ShouldNotGetStripped<int>();
+		}
 
-        public class GenericType<T>
-        {
-        }
+		public class GenericType<T>
+		{
+		}
 
-        public interface ISomething
-        {
-            GenericType<TInInterface> ShouldNotGetStripped<TInInterface>();
-        }
+		public interface ISomething
+		{
+			GenericType<TInInterface> ShouldNotGetStripped<TInInterface>();
+		}
 
-        public class Concrete : ISomething
-        {
-            [Kept]
-            public GenericType<TInConcrete> ShouldNotGetStripped<TInConcrete>()
-            {
-                throw new System.Exception();
-            }
-        }
-    }
+		public class Concrete : ISomething
+		{
+			[Kept]
+			public GenericType<TInConcrete> ShouldNotGetStripped<TInConcrete>()
+			{
+				throw new System.Exception();
+			}
+		}
+	}
 }

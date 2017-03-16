@@ -2,13 +2,13 @@
 
 namespace Mono.Linker.Tests.Core
 {
-    public class ManagedCompilationResult
-    {
-        public ManagedCompilationResult(NPath assemblyPath)
-        {
-            AssemblyPath = assemblyPath;
-        }
+	public class ManagedCompilationResult
+	{
+		public ManagedCompilationResult(NPath assemblyPath)
+		{
+			AssemblyPath = assemblyPath;
+		}
 
-        public NPath AssemblyPath { get; }
-    }
+		public NPath AssemblyPath { get; }
+	}
 }

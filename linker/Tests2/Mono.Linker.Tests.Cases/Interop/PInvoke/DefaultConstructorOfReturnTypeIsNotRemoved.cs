@@ -3,20 +3,20 @@ using Mono.Linker.Tests.Cases.Expectations.Assertions;
 
 namespace Mono.Linker.Tests.Cases.Interop.PInvoke
 {
-    class DefaultConstructorOfReturnTypeIsNotRemoved
-    {
-        public static void Main()
-        {
-            var a = SomeMethod();
-        }
+	class DefaultConstructorOfReturnTypeIsNotRemoved
+	{
+		public static void Main()
+		{
+			var a = SomeMethod();
+		}
 
-        class A
-        {
-            [Kept]
-            public A() { }
-        }
+		class A
+		{
+			[Kept]
+			public A() { }
+		}
 
-        [DllImport("Unused")]
-        private static extern A SomeMethod();
-    }
+		[DllImport("Unused")]
+		private static extern A SomeMethod();
+	}
 }

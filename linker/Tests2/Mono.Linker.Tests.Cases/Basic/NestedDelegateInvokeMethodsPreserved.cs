@@ -2,18 +2,18 @@
 
 namespace Mono.Linker.Tests.Cases.Basic
 {
-    class NestedDelegateInvokeMethodsPreserved
-    {
-        static B.Delegate @delegate;
+	class NestedDelegateInvokeMethodsPreserved
+	{
+		static B.Delegate @delegate;
 
-        static void Main() { System.GC.KeepAlive(@delegate); }
+		static void Main() { System.GC.KeepAlive(@delegate); }
 
-        [Kept]
-        public class B
-        {
-            [Kept]
-            [KeptMember("Invoke()")]
-            public delegate void Delegate();
-        }
-    }
+		[Kept]
+		public class B
+		{
+			[Kept]
+			[KeptMember("Invoke()")]
+			public delegate void Delegate();
+		}
+	}
 }
