@@ -69,6 +69,7 @@
     <Compile Include="Interop\PInvoke\UnusedFieldsOfTypesPassedByRefAreNotRemoved.cs" />
     <Compile Include="Interop\InternalCalls\UnusedFieldsOfTypesWhenHasThisAreNotRemoved.cs" />
     <Compile Include="Interop\UnusedTypeWithSequentialLayoutIsRemoved.cs" />
+    <Compile Include="References\ReferencesAreRemovedWhenAllUsagesAreRemoved.cs" />
     <Compile Include="VirtualMethods\HarderToDetectUnusedVirtualMethodGetsRemoved.cs" />
     <Compile Include="Basic\UnusedClassGetsRemoved.cs" />
     <Compile Include="Basic\UnusedNestedClassGetsRemoved.cs" />
