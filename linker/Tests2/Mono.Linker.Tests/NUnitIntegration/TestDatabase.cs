@@ -8,36 +8,45 @@ using NUnit.Framework;
 
 namespace Mono.Linker.Tests.NUnitIntegration
 {
-    public class TestDatabase
-    {
-        private static NPath RootTestCaseDirectory
-        {
-            get
-            {
-                var testsAssembly = new Uri(typeof(TestDatabase).Assembly.CodeBase).LocalPath.ToNPath();
-                return testsAssembly.Parent.Parent.Parent.Parent.Combine("Mono.Linker.Tests.Cases").DirectoryMustExist();
-            }
-        }
+	public class TestDatabase
+	{
+		private static NPath RootTestCaseDirectory
+		{
+			get
+			{
+				var testsAssemblyPath = new Uri(typeof(TestDatabase).Assembly.CodeBase).LocalPath.ToNPath();
+				return testsAssemblyPath.Parent.Parent.Parent.Parent.Combine("Mono.Linker.Tests.Cases").DirectoryMustExist();
+			}
+		}
 
-        public IEnumerable AllTests()
-        {
-            return AllTestCases(RootTestCaseDirectory);
-        }
+		private static NPath TestCaseAssemblyPath
+		{
+			get
+			{
+				// TODO by Mike : Clean up path finding by referencing the assembly?
+				return RootTestCaseDirectory.Combine("bin", "Debug", "Mono.Linker.Tests.Cases.dll");
+			}
+		}
 
-        public static IEnumerable AllTestCases(NPath rootTestCaseDirectory)
-        {
-            var testCases = new TestCaseCollector(rootTestCaseDirectory.ToString());
-            return MakeTestCasesForProfile(testCases.Collect().ToArray());
-        }
+		public IEnumerable AllTests()
+		{
+			return AllTestCases(RootTestCaseDirectory);
+		}
 
-        private static IEnumerable<TestCaseData> MakeTestCasesForProfile(TestCase[] testCases)
-        {
-            foreach (var test in testCases.OrderBy(t => t.Name))
-            {
-                var data = new TestCaseData(test);
-                data.SetName(test.Name);
-                yield return data;
-            }
-        }
-    }
+		public static IEnumerable AllTestCases(NPath rootTestCaseDirectory)
+		{
+			var testCases = new TestCaseCollector(rootTestCaseDirectory, TestCaseAssemblyPath);
+			return MakeTestCasesForProfile(testCases.Collect().ToArray());
+		}
+
+		private static IEnumerable<TestCaseData> MakeTestCasesForProfile(TestCase[] testCases)
+		{
+			foreach (var test in testCases.OrderBy(t => t.DisplayName))
+			{
+				var data = new TestCaseData(test);
+				data.SetName(test.DisplayName);
+				yield return data;
+			}
+		}
+	}
 }

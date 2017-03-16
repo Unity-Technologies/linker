@@ -5,8 +5,8 @@ using System.Text;
 
 namespace Mono.Linker.Tests.Core
 {
-    public class TestCaseLinkerOptions
-    {
-        public string CoreLink;
-    }
+	public class TestCaseLinkerOptions
+	{
+		public string CoreLink;
+	}
 }

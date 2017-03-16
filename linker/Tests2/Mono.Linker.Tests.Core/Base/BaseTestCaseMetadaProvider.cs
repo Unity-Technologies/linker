@@ -2,27 +2,38 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Mono.Cecil;
 using Mono.Linker.Tests.Core.Utils;
 
 namespace Mono.Linker.Tests.Core.Base
 {
-    public abstract class BaseTestCaseMetadaProvider
-    {
-        protected readonly TestCase _testCase;
+	/// <summary>
+	/// A class that handles obtaining information about a test case
+	/// </summary>
+	public abstract class BaseTestCaseMetadaProvider
+	{
+		protected readonly TestCase _testCase;
+		private readonly AssemblyDefinition _fullTestCaseAssemblyDefinition;
 
-        protected BaseTestCaseMetadaProvider(TestCase testCase)
-        {
-            _testCase = testCase;
-        }
-        // TODO by Mike : Doesn't feel like the best home for this...
-        public abstract NPath ProfileDirectory { get; }
+		protected BaseTestCaseMetadaProvider(TestCase testCase, AssemblyDefinition fullTestCaseAssemblyDefinition)
+		{
+			_testCase = testCase;
+			_fullTestCaseAssemblyDefinition = fullTestCaseAssemblyDefinition;
+		}
 
-        public abstract IEnumerable<string> GetReferencedAssemblies();
+		protected AssemblyDefinition FullTestCaseAssemblyDefinition => _fullTestCaseAssemblyDefinition;
 
-        public abstract IEnumerable<NPath> GetExtraLinkerSearchDirectories();
+		// TODO by Mike : Doesn't feel like the best home for this...
+		public abstract NPath ProfileDirectory { get; }
 
-        public abstract TestCaseLinkerOptions GetLinkerOptions();
+		public abstract IEnumerable<string> GetReferencedAssemblies();
 
-        public abstract bool IsIgnored(out string reason);
-    }
+		public abstract IEnumerable<NPath> GetExtraLinkerSearchDirectories();
+
+		public abstract TestCaseLinkerOptions GetLinkerOptions();
+
+		public abstract bool IsIgnored(out string reason);
+
+		public abstract IEnumerable<NPath> AdditionalFilesToSandbox();
+	}
 }
