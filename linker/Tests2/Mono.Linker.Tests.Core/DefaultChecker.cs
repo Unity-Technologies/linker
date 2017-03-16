@@ -44,23 +44,23 @@ namespace Mono.Linker.Tests.Core
 			var membersToAssert = CollectMembersToAssert(original).ToArray();
 			foreach (var originalMember in membersToAssert)
 			{
-				if (originalMember is TypeDefinition)
+				if (originalMember.Definition is TypeDefinition)
 				{
-					TypeDefinition linkedType = linked.MainModule.GetType(originalMember.FullName);
-					CheckTypeDefinition((TypeDefinition)originalMember, linkedType);
+					TypeDefinition linkedType = linked.MainModule.GetType(originalMember.Definition.FullName);
+					CheckTypeDefinition((TypeDefinition)originalMember.Definition, linkedType);
 				}
-				else if (originalMember is FieldDefinition)
+				else if (originalMember.Definition is FieldDefinition)
 				{
-					TypeDefinition linkedType = linked.MainModule.GetType(originalMember.DeclaringType.FullName);
+					TypeDefinition linkedType = linked.MainModule.GetType(originalMember.Definition.DeclaringType.FullName);
 					CheckTypeMember(originalMember, linkedType, "Field", () => linkedType.Fields);
 				}
-				else if (originalMember is MethodDefinition)
+				else if (originalMember.Definition is MethodDefinition)
 				{
-					var originalMethodDef = (MethodDefinition) originalMember;
-					TypeDefinition linkedType = linked.MainModule.GetType(originalMember.DeclaringType.FullName);
-					CheckTypeMember(originalMethodDef, linkedType, "Method", () => linkedType.Methods);
+					//var originalMethodDef = (MethodDefinition) originalMember.Definition;
+					TypeDefinition linkedType = linked.MainModule.GetType(originalMember.Definition.DeclaringType.FullName);
+					CheckTypeMember(originalMember, linkedType, "Method", () => linkedType.Methods);
 				}
-				else if (originalMember is PropertyDefinition)
+				else if (originalMember.Definition is PropertyDefinition)
 				{
 					throw new InvalidOperationException($"Should not encounter PropertyDefinitions here.  They should have been filtered out by {nameof(CollectMembersToAssert)}");
 				}
@@ -78,9 +78,9 @@ namespace Mono.Linker.Tests.Core
 			AssertNonCounted.AreEqual(_assertionCounter.AssertionsMade, membersToAssert.Length, $"Expected to make {membersToAssert.Length} assertions, but only made {_assertionCounter.AssertionsMade}.  The test may be invalid or there may be a bug in the checking logic");
 		}
 
-		protected virtual void CheckTypeMember<T>(T originalMember, TypeDefinition linkedParentTypeDefinition, string definitionTypeName, Func<IEnumerable<T>> getLinkedMembers) where T : IMemberDefinition
+		protected virtual void CheckTypeMember<T>(DefinitionAndExpectation originalMember, TypeDefinition linkedParentTypeDefinition, string definitionTypeName, Func<IEnumerable<T>> getLinkedMembers) where T : IMemberDefinition
 		{
-			if (originalMember.ShouldBeRemoved())
+			if (ShouldBeRemoved(originalMember))
 			{
 				if (linkedParentTypeDefinition == null)
 				{
@@ -90,7 +90,7 @@ namespace Mono.Linker.Tests.Core
 				}
 				else
 				{
-					var originalName = originalMember.GetFullName();
+					var originalName = originalMember.Definition.GetFullName();
 					var linkedMember = getLinkedMembers().FirstOrDefault(linked => linked.GetFullName() == originalName);
 					Assert.IsNull(linkedMember, $"{definitionTypeName}: `{originalMember}' should have been removed");
 				}
@@ -98,13 +98,13 @@ namespace Mono.Linker.Tests.Core
 				return;
 			}
 
-			if (originalMember.ShouldBeKept())
+			if (ShouldBeKept(originalMember))
 			{
 				// if the member should be kept, then there's an implied requirement that the parent type exists.  Let's make that check
 				// even if the test case didn't request it otherwise we are just going to hit a null reference exception when we try to get the members on the type
-				_realAssertions.IsNotNull(linkedParentTypeDefinition, $"{definitionTypeName}: `{originalMember}' should have been kept, but the entire parent type was removed {originalMember.DeclaringType}");
+				_realAssertions.IsNotNull(linkedParentTypeDefinition, $"{definitionTypeName}: `{originalMember}' should have been kept, but the entire parent type was removed {originalMember.Definition.DeclaringType}");
 
-				var originalName = originalMember.GetFullName();
+				var originalName = originalMember.Definition.GetFullName();
 				var linkedMember = getLinkedMembers().FirstOrDefault(linked => linked.GetFullName() == originalName);
 				Assert.IsNotNull(linkedMember, $"{definitionTypeName}: `{originalMember}' should have been kept");
 			}
@@ -124,7 +124,7 @@ namespace Mono.Linker.Tests.Core
 			}
 		}
 
-		private IEnumerable<IMemberDefinition> CollectMembersToAssert(AssemblyDefinition original)
+		private IEnumerable<DefinitionAndExpectation> CollectMembersToAssert(AssemblyDefinition original)
 		{
 			var membersWithAssertAttributes = original.MainModule.AllMembers().Where(m => m.HasExpectedLinkerBehaviorAttribute());
 
@@ -149,14 +149,14 @@ namespace Mono.Linker.Tests.Core
 				}
 
 				// It's some other basic member such as a Field or method that requires no extra special processing
-				yield return member;
+				yield return new DefinitionAndExpectation(member, member.CustomAttributes.First(attr => attr.IsSelfAssertion()));
 			}
 		}
 
-		private static IEnumerable<IMemberDefinition> ExpandTypeDefinition(TypeDefinition typeDefinition)
+		private static IEnumerable<DefinitionAndExpectation> ExpandTypeDefinition(TypeDefinition typeDefinition)
 		{
 			if (typeDefinition.HasSelfAssertions())
-				yield return typeDefinition;
+				yield return new DefinitionAndExpectation(typeDefinition, typeDefinition.CustomAttributes.First(attr => attr.IsSelfAssertion()));
 
 			// Check if the type definition only has self assertions, if so, no need to continue to trying to expand the other assertions
 			if (typeDefinition.CustomAttributes.Count == 1)
@@ -177,12 +177,11 @@ namespace Mono.Linker.Tests.Core
 				if (matchedDefinition == null)
 					throw new InvalidOperationException($"Could not find member {name} on type {typeDefinition}");
 
-				// TODO by Mike : How to make sure what we return is now flagged for Kept/Removed?
-				throw new NotImplementedException();
+				yield return new DefinitionAndExpectation(matchedDefinition, attr);
 			}
 		}
 
-		private static IEnumerable<IMemberDefinition> ExpandPropertyDefinition(PropertyDefinition propertyDefinition)
+		private static IEnumerable<DefinitionAndExpectation> ExpandPropertyDefinition(PropertyDefinition propertyDefinition)
 		{
 			// Let's do some error checking to make sure test cases are not setup in incorrect ways.
 			if (propertyDefinition.GetMethod.HasExpectedLinkerBehaviorAttribute())
@@ -193,9 +192,36 @@ namespace Mono.Linker.Tests.Core
 
 			// We don't want to return the PropertyDefinition itself, the assertion logic won't know what to do with them.  Instead return the getter and setters
 			// When the PropertyDefinition has an expectation on it, it will apply to both the getter and setter
-			yield return propertyDefinition.GetMethod;
-			yield return propertyDefinition.SetMethod;
+		    var expectationAttribute = propertyDefinition.CustomAttributes.First(attr => attr.IsExpectedLinkerBehaviorAttribute());
+
+			yield return new DefinitionAndExpectation(propertyDefinition.GetMethod, expectationAttribute);
+			yield return new DefinitionAndExpectation(propertyDefinition.SetMethod, expectationAttribute);
 		}
+
+		protected static bool ShouldBeRemoved(DefinitionAndExpectation expectation)
+		{
+			return expectation.ExpectedResult.AttributeType.Resolve().DerivesFrom(nameof(RemovedAttribute));
+		}
+
+		protected static bool ShouldBeKept(DefinitionAndExpectation expectation)
+		{
+		    return expectation.ExpectedResult.AttributeType.Resolve().DerivesFrom(nameof(KeptAttribute));
+		}
+
+		public class DefinitionAndExpectation
+	    {
+	        public readonly IMemberDefinition Definition;
+	        public readonly CustomAttribute ExpectedResult;
+
+	        public DefinitionAndExpectation(IMemberDefinition definition, CustomAttribute expectedResult)
+	        {
+				if (expectedResult == null)
+					throw new ArgumentNullException();
+
+	            Definition = definition;
+	            ExpectedResult = expectedResult;
+	        }
+	    }
 
 		private class AssertionCounter : BaseAssertions
 		{
