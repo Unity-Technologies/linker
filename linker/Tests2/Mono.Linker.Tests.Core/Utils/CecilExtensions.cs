@@ -91,6 +91,15 @@ namespace Mono.Linker.Tests.Core.Utils
 			return memberDefinition.FullName;
 		}
 
+		public static PropertyDefinition GetPropertyDefinition(this MethodDefinition method)
+		{
+			if (!method.IsSetter && !method.IsGetter)
+				throw new ArgumentException();
+
+			var propertyName = method.Name.Substring(4);
+			return method.DeclaringType.Properties.First(p => p.Name == propertyName);
+		}
+
 		public static string GetFullName(this MethodReference method)
 		{
 			if (!method.HasGenericParameters)

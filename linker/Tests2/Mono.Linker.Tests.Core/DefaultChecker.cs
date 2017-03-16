@@ -62,10 +62,7 @@ namespace Mono.Linker.Tests.Core
 				}
 				else if (originalMember is PropertyDefinition)
 				{
-					// TODO by Mike : Need to implement.
-					//  * Process the GetMethod().  It could have assert attributes.  Also need to respect an assert attribute on the PropertyDefinition
-					//  * Process the SetMethod().  It could have assert attributes.  Also need to respect an assert attribute on the PropertyDefinition
-					throw new NotImplementedException("Checking of properties has not been implemented yet");
+					throw new InvalidOperationException($"Should not encounter PropertyDefinitions here.  They should have been filtered out by {nameof(CollectMembersToAssert)}");
 				}
 				else
 				{
@@ -129,48 +126,75 @@ namespace Mono.Linker.Tests.Core
 
 		private IEnumerable<IMemberDefinition> CollectMembersToAssert(AssemblyDefinition original)
 		{
-			var membersWithAssertAttributes = original.MainModule.AllMembers().Where(m => m.HasAttributeDerivedFrom(nameof(BaseExpectedLinkedBehaviorAttribute)));
+			var membersWithAssertAttributes = original.MainModule.AllMembers().Where(m => m.HasExpectedLinkerBehaviorAttribute());
 
 			// Some of the assert attributes on classes flag methods that are not in the .cs for checking.  We need to collection the member definitions for these
 			foreach (var member in membersWithAssertAttributes)
 			{
+				var asPropertyDef = member as PropertyDefinition;
+				if (asPropertyDef != null)
+				{
+					foreach (var additionalMember in ExpandPropertyDefinition(asPropertyDef))
+						yield return additionalMember;
+					continue;
+				}
+
 				// For now, only support types of attributes on Types.
-				var typeDefinition = member as TypeDefinition;
-
-				if (typeDefinition == null)
+				var asTypeDefinition = member as TypeDefinition;
+				if (asTypeDefinition != null)
 				{
-					// The expandable attributes can only go on types, so if this member is not a type it must be something else that only supports the self assertions
-					yield return member;
+					foreach (var additionalMember in ExpandTypeDefinition(asTypeDefinition))
+						yield return additionalMember;
 					continue;
 				}
 
-				if (member.HasSelfAssertions())
-					yield return member;
-
-				// Check if the type definition only has self assertions, if so, no need to continue to trying to expand the other assertions
-				if (member.CustomAttributes.Count == 1)
-					continue;
-
-				foreach (var attr in member.CustomAttributes)
-				{
-					if (attr.IsSelfAssertion())
-						continue;
-
-
-					var name = (string)attr.ConstructorArguments.First().Value;
-
-					if (string.IsNullOrEmpty(name))
-						throw new ArgumentNullException($"Value cannot be null on {attr.AttributeType} on {member}");
-
-					IMemberDefinition matchedDefinition = typeDefinition.AllMembers().FirstOrDefault(m => m.GetFullName().EndsWith(name));
-
-					if (matchedDefinition == null)
-						throw new InvalidOperationException($"Could not find member {name} on type {typeDefinition}");
-
-					// TODO by Mike : How to make sure what we return is now flagged for Kept/Removed?
-					throw new NotImplementedException();
-				}
+				// It's some other basic member such as a Field or method that requires no extra special processing
+				yield return member;
 			}
+		}
+
+		private static IEnumerable<IMemberDefinition> ExpandTypeDefinition(TypeDefinition typeDefinition)
+		{
+			if (typeDefinition.HasSelfAssertions())
+				yield return typeDefinition;
+
+			// Check if the type definition only has self assertions, if so, no need to continue to trying to expand the other assertions
+			if (typeDefinition.CustomAttributes.Count == 1)
+				yield break;
+
+			foreach (var attr in typeDefinition.CustomAttributes)
+			{
+				if (attr.IsSelfAssertion())
+					continue;
+
+				var name = (string)attr.ConstructorArguments.First().Value;
+
+				if (string.IsNullOrEmpty(name))
+					throw new ArgumentNullException($"Value cannot be null on {attr.AttributeType} on {typeDefinition}");
+
+				IMemberDefinition matchedDefinition = typeDefinition.AllMembers().FirstOrDefault(m => m.GetFullName().EndsWith(name));
+
+				if (matchedDefinition == null)
+					throw new InvalidOperationException($"Could not find member {name} on type {typeDefinition}");
+
+				// TODO by Mike : How to make sure what we return is now flagged for Kept/Removed?
+				throw new NotImplementedException();
+			}
+		}
+
+		private static IEnumerable<IMemberDefinition> ExpandPropertyDefinition(PropertyDefinition propertyDefinition)
+		{
+			// Let's do some error checking to make sure test cases are not setup in incorrect ways.
+			if (propertyDefinition.GetMethod.HasExpectedLinkerBehaviorAttribute())
+				throw new InvalidOperationException($"Invalid test.  Both the PropertyDefinition {propertyDefinition} and {propertyDefinition.GetMethod} have an expectation attribute on them.  Put the attribute on one or the other");
+
+			if (propertyDefinition.SetMethod.HasExpectedLinkerBehaviorAttribute())
+				throw new InvalidOperationException($"Invalid test.  Both the PropertyDefinition {propertyDefinition} and {propertyDefinition.SetMethod} have an expectation attribute on them.  Put the attribute on one or the other");
+
+			// We don't want to return the PropertyDefinition itself, the assertion logic won't know what to do with them.  Instead return the getter and setters
+			// When the PropertyDefinition has an expectation on it, it will apply to both the getter and setter
+			yield return propertyDefinition.GetMethod;
+			yield return propertyDefinition.SetMethod;
 		}
 
 		private class AssertionCounter : BaseAssertions
