@@ -14,10 +14,10 @@ namespace Mono.Linker.Tests.Core.Utils
 			return provider.HasAttributeDerivedFrom(nameof(BaseExpectedLinkedBehaviorAttribute));
 		}
 
-	    public static bool IsExpectedLinkerBehaviorAttribute(this CustomAttribute attr)
-	    {
-	        return attr.AttributeType.Resolve().DerivesFrom(nameof(BaseExpectedLinkedBehaviorAttribute));
-	    }
+		public static bool IsExpectedLinkerBehaviorAttribute(this CustomAttribute attr)
+		{
+			return attr.AttributeType.Resolve().DerivesFrom(nameof(BaseExpectedLinkedBehaviorAttribute));
+		}
 
 		public static bool ShouldBeRemoved(this ICustomAttributeProvider provider)
 		{

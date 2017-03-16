@@ -73,8 +73,8 @@ namespace Mono.Linker.Tests.Core.Utils
 
 		public static bool DerivesFrom(this TypeDefinition type, string baseTypeName)
 		{
-		    if (type.Name == baseTypeName)
-		        return true;
+			if (type.Name == baseTypeName)
+				return true;
 
 			if (type.BaseType == null)
 				return false;

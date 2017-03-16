@@ -15,12 +15,12 @@ namespace Mono.Linker.Tests.Cases.References
 		{
 		}
 
-	    class UnusedClassThatUsesTypeFromAnotherAssembly
-	    {
-	        void SomeMethod()
-	        {
-	            // Use something in a different assembly
-	        }
-	    }
+		class UnusedClassThatUsesTypeFromAnotherAssembly
+		{
+			void SomeMethod()
+			{
+				// Use something in a different assembly
+			}
+		}
 	}
 }

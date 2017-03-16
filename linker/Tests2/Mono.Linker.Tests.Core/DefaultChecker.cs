@@ -192,7 +192,7 @@ namespace Mono.Linker.Tests.Core
 
 			// We don't want to return the PropertyDefinition itself, the assertion logic won't know what to do with them.  Instead return the getter and setters
 			// When the PropertyDefinition has an expectation on it, it will apply to both the getter and setter
-		    var expectationAttribute = propertyDefinition.CustomAttributes.First(attr => attr.IsExpectedLinkerBehaviorAttribute());
+			var expectationAttribute = propertyDefinition.CustomAttributes.First(attr => attr.IsExpectedLinkerBehaviorAttribute());
 
 			yield return new DefinitionAndExpectation(propertyDefinition.GetMethod, expectationAttribute);
 			yield return new DefinitionAndExpectation(propertyDefinition.SetMethod, expectationAttribute);
@@ -205,23 +205,23 @@ namespace Mono.Linker.Tests.Core
 
 		protected static bool ShouldBeKept(DefinitionAndExpectation expectation)
 		{
-		    return expectation.ExpectedResult.AttributeType.Resolve().DerivesFrom(nameof(KeptAttribute));
+			return expectation.ExpectedResult.AttributeType.Resolve().DerivesFrom(nameof(KeptAttribute));
 		}
 
 		public class DefinitionAndExpectation
-	    {
-	        public readonly IMemberDefinition Definition;
-	        public readonly CustomAttribute ExpectedResult;
+		{
+			public readonly IMemberDefinition Definition;
+			public readonly CustomAttribute ExpectedResult;
 
-	        public DefinitionAndExpectation(IMemberDefinition definition, CustomAttribute expectedResult)
-	        {
+			public DefinitionAndExpectation(IMemberDefinition definition, CustomAttribute expectedResult)
+			{
 				if (expectedResult == null)
 					throw new ArgumentNullException();
 
-	            Definition = definition;
-	            ExpectedResult = expectedResult;
-	        }
-	    }
+				Definition = definition;
+				ExpectedResult = expectedResult;
+			}
+		}
 
 		private class AssertionCounter : BaseAssertions
 		{
