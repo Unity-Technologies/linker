@@ -24,5 +24,15 @@ namespace Mono.Linker.Tests.CoreIntegration
 		{
 			Assert.Ignore(reason);
 		}
+
+		public override void Fail(string message)
+		{
+			Assert.Fail(message);
+		}
+
+		public override void AreEqual(object expected, object actual, string message)
+		{
+			Assert.AreEqual(expected, actual, message);
+		}
 	}
 }
