@@ -64,7 +64,7 @@ namespace Mono.Linker.Tests.Core
 			_testCase.SourceFile.Copy(_directory);
 
 			if (_testCase.HasLinkXmlFile)
-				_testCase.LinkXmlFile.Copy(_directory);
+				_testCase.LinkXmlFile.Copy(InputDirectory);
 
 			GetExpectationsAssemblyPath().Copy(InputDirectory);
 
