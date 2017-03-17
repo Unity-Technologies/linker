@@ -167,6 +167,9 @@ namespace Mono.Linker.Tests.Core
 				if (attr.IsSelfAssertion())
 					continue;
 
+				if (!attr.IsExpectedLinkerBehaviorAttribute())
+					continue;
+
 				var name = (string)attr.ConstructorArguments.First().Value;
 
 				if (string.IsNullOrEmpty(name))
@@ -220,6 +223,11 @@ namespace Mono.Linker.Tests.Core
 
 				Definition = definition;
 				ExpectedResult = expectedResult;
+			}
+
+			public override string ToString()
+			{
+				return Definition.ToString();
 			}
 		}
 

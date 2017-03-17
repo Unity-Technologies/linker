@@ -6,6 +6,13 @@ namespace Mono.Linker.Tests.CoreIntegration
 {
 	public class ObjectFactory : BaseObjectFactory
 	{
+		private readonly BaseAssertions _assertions;
+
+		public ObjectFactory(BaseAssertions assertions)
+		{
+			_assertions = assertions;
+		}
+
 		public override BaseLinker CreateLinker(TestCase testCase)
 		{
 			return new MonoLinker(testCase);
@@ -13,7 +20,7 @@ namespace Mono.Linker.Tests.CoreIntegration
 
 		public override BaseAssertions CreateAssertions()
 		{
-			return new NUnitAssertions();
+			return _assertions;
 		}
 	}
 }
