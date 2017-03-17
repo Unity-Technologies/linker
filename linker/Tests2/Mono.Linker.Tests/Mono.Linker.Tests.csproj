@@ -49,7 +49,10 @@
     <Compile Include="CoreIntegration\MonoLinker.cs" />
     <Compile Include="CoreIntegration\NUnitAssertions.cs" />
     <Compile Include="CoreIntegration\ObjectFactory.cs" />
+    <Compile Include="CoreIntegration\XUnitAssertions.cs" />
     <Compile Include="NUnitIntegration\TestDatabase.cs" />
+    <Compile Include="Utils\PathUtils.cs" />
+    <Compile Include="XUnitIntegration\TestDatabase.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Mono.Linker.csproj">
