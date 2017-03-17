@@ -131,13 +131,7 @@ namespace Mono.Linker.Steps {
 
 					if (!isForwarder)
 						continue;
-					TypeDefinition type = null;
-					try {
-						type = exported.Resolve ();
-					}
-					catch (AssemblyResolutionException) {
-						continue;
-					}
+					var type = exported.Resolve ();
 					if (!Annotations.IsMarked (type))
 						continue;
 					Annotations.Mark (exported);
