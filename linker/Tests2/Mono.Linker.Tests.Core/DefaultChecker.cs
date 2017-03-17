@@ -221,6 +221,11 @@ namespace Mono.Linker.Tests.Core
 				Definition = definition;
 				ExpectedResult = expectedResult;
 			}
+
+			public override string ToString()
+			{
+				return Definition.ToString();
+			}
 		}
 
 		private class AssertionCounter : BaseAssertions
