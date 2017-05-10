@@ -26,7 +26,9 @@
     <RootNamespace>Mono.Linker</RootNamespace>
     <AssemblyName Condition=" ! $(ILLinkBuild) ">monolinker</AssemblyName>
     <AssemblyName Condition=" $(ILLinkBuild) ">illink</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <OutputPath>../../build/</OutputPath>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>True</DebugSymbols>
