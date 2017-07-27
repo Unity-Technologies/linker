@@ -45,7 +45,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\external\NUnit\bin\nunit.framework.dll</HintPath>
     </Reference>
-    <Reference Include="Mono.Cecil, Version=0.10.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
+    <Reference Include="Mono.Cecil">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\external\cecil\Mono.Cecil.dll</HintPath>
     </Reference>
