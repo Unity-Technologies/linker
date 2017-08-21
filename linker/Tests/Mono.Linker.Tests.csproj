@@ -70,9 +70,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="TestCasesRunner\CompilerOptions.cs" />
     <Compile Include="TestCasesRunner\ILCompiler.cs" />
     <Compile Include="TestCasesRunner\SetupCompileInfo.cs" />
