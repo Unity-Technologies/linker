@@ -2,9 +2,8 @@
 
 namespace Mono.Linker.Tests.Cases.Expectations.Metadata {
 	[AttributeUsage (AttributeTargets.Class, AllowMultiple = true)]
-	public class SandboxDependencyAttribute : BaseMetadataAttribute {
-
-		public SandboxDependencyAttribute (string relativePathToFile, string destinationFileName = null)
+	public class SetupCompileResourceAttribute : BaseMetadataAttribute {
+		public SetupCompileResourceAttribute (string relativePathToFile, string destinationFileName = null)
 		{
 			if (string.IsNullOrEmpty (relativePathToFile))
 				throw new ArgumentException ("Value cannot be null or empty.", nameof (relativePathToFile));

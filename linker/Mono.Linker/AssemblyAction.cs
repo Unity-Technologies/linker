@@ -32,8 +32,12 @@ namespace Mono.Linker {
 		// Ignore the assembly
 		Skip,
 		// Copy the existing files, assembly and symbols, into the output destination. E.g. .dll and .mdb
-		// The linker still analyze the assemblies (to know what they require) but does not modify them
+		// The linker still analyzes the assemblies (to know what they require) but does not modify them.
 		Copy,
+		// Copy the existing files, assembly and symbols, into the output destination if and only if
+		// anything from the assembly is used.
+		// The linker still analyzes the assemblies (to know what they require) but does not modify them.
+		CopyUsed,
 		// Link the assembly
 		Link,
 		// Remove the assembly from the output
@@ -41,6 +45,11 @@ namespace Mono.Linker {
 		// Save the assembly/symbols in memory without linking it. 
 		// E.g. useful to remove unneeded assembly references (as done in SweepStep), 
 		//  resolving [TypeForwardedTo] attributes (like PCL) to their final location
-		Save
+		Save,
+		// Keep all types, methods, and fields but add System.Runtime.BypassNGenAttribute to unmarked methods.
+		AddBypassNGen,
+		// Keep all types, methods, and fields in marked assemblies but add System.Runtime.BypassNGenAttribute to unmarked methods.
+		// Delete unmarked assemblies.
+		AddBypassNGenUsed
 	}
 }

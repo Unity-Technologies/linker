@@ -29,7 +29,7 @@ namespace ILLink.Tests
 		///   The path to the dotnet tool to use to run the
 		///   integration tests.
 		/// </summary>
-		public string DotnetToolPath { get; private set; }
+		public string DotnetToolPath { get; set; }
 
 		/// <summary>
 		///   The RID to use when restoring, building, and linking the
@@ -44,6 +44,13 @@ namespace ILLink.Tests
 		public string Configuration { get; private set; }
 
 		/// <summary>
+		///   The root testbin directory. Used to install test
+		///   assets that don't depend on the configuration or
+		///   target framework.
+		/// </summary>
+		public string TestBin { get; private set; }
+
+		/// <summary>
 		///   This is the context from which tests will be run in the
 		///   linker repo. The local directory that contains the
 		///   linker integration packages (hard-coded here) is
@@ -54,7 +61,10 @@ namespace ILLink.Tests
 		public static TestContext CreateDefaultContext()
 		{
 			var packageName = "ILLink.Tasks";
-			var packageSource = "../../../../bin/nupkgs";
+			// test is run from corebuild/testbin/<config>/<tfm>
+			var corebuild = "../../../";
+			var testBin = Path.Combine(corebuild, "testbin");
+			var packageSource = Path.Combine(corebuild, "integration", "bin", "nupkgs");
 			var tasksPackages = Directory.GetFiles(packageSource)
 				.Where(p => Path.GetExtension(p) == ".nupkg")
 				.Select(p => Path.GetFileNameWithoutExtension(p))
@@ -67,7 +77,7 @@ namespace ILLink.Tests
 			}
 			var tasksPackage = tasksPackages.Single();
 			var version = tasksPackage.Remove(0, packageName.Length + 1);
-			var dotnetDir = "../../../../../../corebuild/Tools/dotnetcli";
+			var dotnetDir = Path.Combine(corebuild, "Tools", "dotnetcli");
 			var dotnetToolNames = Directory.GetFiles(dotnetDir)
 				.Select(p => Path.GetFileName(p))
 				.Where(p => p.Contains("dotnet"));
@@ -87,9 +97,16 @@ namespace ILLink.Tests
 			context.DotnetToolPath = dotnetToolPath;
 			// This sets the RID to the RID of the currently-executing system.
 			context.RuntimeIdentifier = RuntimeEnvironment.GetRuntimeIdentifier();
+			// workaround: the osx.10.13-x64 RID doesn't exist yet.
+			// see https://github.com/dotnet/core-setup/issues/3301
+			if (context.RuntimeIdentifier == "osx.10.13-x64")
+			{
+				context.RuntimeIdentifier = "osx.10.12-x64";
+			}
 			// We want to build and link integration projects in the
 			// release configuration.
 			context.Configuration = "Release";
+			context.TestBin = testBin;
 			return context;
 		}
 	}

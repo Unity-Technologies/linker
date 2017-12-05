@@ -3,7 +3,6 @@
     <VersionPrefix>0.1.4-preview</VersionPrefix>
     <TargetFrameworks>netcoreapp2.0;net46</TargetFrameworks>
     <TargetFrameworks Condition=" '$(OS)' != 'Windows_NT' ">netcoreapp2.0</TargetFrameworks>
-    <RuntimeFrameworkVersion>2.0.0-beta-001509-00</RuntimeFrameworkVersion>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <BaseOutputPath>../bin/</BaseOutputPath>
     <PackageOutputPath>$(BaseOutputPath)nupkgs</PackageOutputPath>
@@ -191,8 +190,8 @@
           AfterTargets="AssignProjectConfiguration">
     <ItemGroup>
       <ProjectReferenceWithConfiguration Condition=" '%(Filename)%(Extension)' == 'Mono.Cecil.csproj' Or '%(Filename)%(Extension)' == 'Mono.Cecil.Pdb.csproj' ">
-	<SetConfiguration Condition=" '$(TargetFramework)' == 'net46' ">Configuration=net_4_0_$(Configuration)</SetConfiguration>
-	<SetConfiguration Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">Configuration=netstandard_$(Configuration)</SetConfiguration>
+        <SetConfiguration Condition=" '$(TargetFramework)' == 'net46' ">Configuration=net_4_0_$(Configuration)</SetConfiguration>
+        <SetConfiguration Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">Configuration=netstandard_$(Configuration)</SetConfiguration>
       </ProjectReferenceWithConfiguration>
     </ItemGroup>
   </Target>

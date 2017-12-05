@@ -59,11 +59,26 @@ namespace Mono.Linker.Steps {
 
 		XPathDocument _document;
 		string _xmlDocumentLocation;
+		string _resourceName;
+		AssemblyDefinition _resourceAssembly;
 
 		public ResolveFromXmlStep (XPathDocument document, string xmlDocumentLocation = "<unspecified>")
 		{
 			_document = document;
 			_xmlDocumentLocation = xmlDocumentLocation;
+		}
+
+		public ResolveFromXmlStep (XPathDocument document, string resourceName, AssemblyDefinition resourceAssembly, string xmlDocumentLocation = "<unspecified>")
+			: this (document, xmlDocumentLocation)
+		{
+			if (string.IsNullOrEmpty (resourceName))
+				throw new ArgumentNullException (nameof (resourceName));
+
+			if (resourceAssembly == null)
+				throw new ArgumentNullException (nameof (resourceAssembly));
+
+			_resourceName = resourceName;
+			_resourceAssembly = resourceAssembly;
 		}
 
 		protected override void Process ()
@@ -77,6 +92,9 @@ namespace Mono.Linker.Steps {
 
 			try {
 				ProcessAssemblies (Context, nav.SelectChildren ("assembly", _ns));
+
+				if (!string.IsNullOrEmpty (_resourceName))
+					Context.Annotations.AddResourceToRemove (_resourceAssembly, _resourceName);
 			} catch (Exception ex) {
 				throw new XmlResolutionException (string.Format ("Failed to process XML description: {0}", _xmlDocumentLocation), ex);
 			}
@@ -86,6 +104,7 @@ namespace Mono.Linker.Steps {
 		{
 			while (iterator.MoveNext ()) {
 				AssemblyDefinition assembly = GetAssembly (context, GetFullName (iterator.Current));
+				Annotations.Push (assembly);
 				if (GetTypePreserve (iterator.Current) == TypePreserve.All) {
 					foreach (var type in assembly.MainModule.Types)
 						MarkAndPreserveAll (type);
@@ -93,6 +112,7 @@ namespace Mono.Linker.Steps {
 					ProcessTypes (assembly, iterator.Current.SelectChildren ("type", _ns));
 					ProcessNamespaces (assembly, iterator.Current.SelectChildren ("namespace", _ns));
 				}
+				Annotations.Pop (); 
 			}
 		}
 
@@ -112,13 +132,18 @@ namespace Mono.Linker.Steps {
 		void MarkAndPreserveAll (TypeDefinition type)
 		{
 			Annotations.Mark (type);
+			Annotations.Push (type);
 			Annotations.SetPreserve (type, TypePreserve.All);
 
-			if (!type.HasNestedTypes)
+			if (!type.HasNestedTypes) {
+				Annotations.Pop ();
 				return;
+			}
 
 			foreach (TypeDefinition nested in type.NestedTypes)
 				MarkAndPreserveAll (nested);
+
+			Annotations.Pop ();
 		}
 
 		void ProcessTypes (AssemblyDefinition assembly, XPathNodeIterator iterator)
@@ -139,8 +164,10 @@ namespace Mono.Linker.Steps {
 						foreach (var exported in assembly.MainModule.ExportedTypes) {
 							if (fullname == exported.FullName) {
 								Annotations.Mark (exported);
+								Annotations.Push (exported);
 								Annotations.Mark (assembly.MainModule);
 								var resolvedExternal = exported.Resolve ();
+								Annotations.Pop ();
 								if (resolvedExternal != null) {
 									type = resolvedExternal;
 									break;
@@ -222,6 +249,7 @@ namespace Mono.Linker.Steps {
 			}
 
 			Annotations.Mark (type);
+			Annotations.Push (type);
 
 			if (type.IsNested) {
 				var parent = type;
@@ -240,6 +268,7 @@ namespace Mono.Linker.Steps {
 				MarkSelectedEvents (nav, type);
 				MarkSelectedProperties (nav, type);
 			}
+			Annotations.Pop ();
 		}
 
 		void MarkSelectedFields (XPathNavigator nav, TypeDefinition type)

@@ -6,11 +6,12 @@ param
     [Parameter(Mandatory=$false)][string]$SharedFrameworkSymlinkPath = (Join-Path $ToolsLocalPath "dotnetcli\shared\Microsoft.NETCore.App\version"),
     [Parameter(Mandatory=$false)][string]$SharedFrameworkVersion = "<auto>",
     [Parameter(Mandatory=$false)][string]$Architecture = "<auto>",
-    [Parameter(Mandatory=$false)][string]$DotNetInstallBranch = "rel/1.0.0",
+    [Parameter(Mandatory=$false)][string]$DotNetInstallBranch = "release/2.0.0",
     [switch]$Force = $false
 )
 
 $rootCliVersion = Join-Path $RepositoryRoot ".cliversion"
+$globalJson = Join-Path $RepositoryRoot "global.json"
 $bootstrapComplete = Join-Path $ToolsLocalPath "bootstrap.complete"
 
 # if the force switch is specified delete the semaphore file if it exists
@@ -58,6 +59,8 @@ if ($LastExitCode -ne 0)
     Write-Output "The .NET CLI installation failed with exit code $LastExitCode"
     exit $LastExitCode
 }
+
+"{ `"sdk`": { `"version`": `"$dotNetCliVersion`" } }" | Out-File -Encoding utf8 -FilePath $globalJson
 
 # write semaphore file
 copy $rootCliVersion $bootstrapComplete
