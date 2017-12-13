@@ -1,5 +1,5 @@
 ﻿<linker>
-  <assembly fullname="forwarder, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+  <assembly fullname="Forwarder, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
     <type fullname="Mono.Linker.Tests.Cases.LinkXml.Dependencies.CanPreserveAnExportedType_Library" preserve="all">
     </type>
   </assembly>
