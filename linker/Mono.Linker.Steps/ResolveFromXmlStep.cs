@@ -110,7 +110,7 @@ namespace Mono.Linker.Steps {
 
 		protected void ProcessAssembly (AssemblyDefinition assembly, XPathNodeIterator iterator)
 		{
-			Annotations.Push (assembly);
+			Dependencies.Push (assembly);
 			if (GetTypePreserve (iterator.Current) == TypePreserve.All) {
 				foreach (var type in assembly.MainModule.Types)
 					MarkAndPreserveAll (type);
@@ -118,7 +118,7 @@ namespace Mono.Linker.Steps {
 				ProcessTypes (assembly, iterator.Current.SelectChildren ("type", _ns));
 				ProcessNamespaces (assembly, iterator.Current.SelectChildren ("namespace", _ns));
 			}
-			Annotations.Pop ();
+			Dependencies.Pop ();
 		}
 
 		void ProcessNamespaces (AssemblyDefinition assembly, XPathNodeIterator iterator)
@@ -137,18 +137,18 @@ namespace Mono.Linker.Steps {
 		void MarkAndPreserveAll (TypeDefinition type)
 		{
 			Annotations.Mark (type);
-			Annotations.Push (type);
+			Dependencies.Push (type);
 			Annotations.SetPreserve (type, TypePreserve.All);
 
 			if (!type.HasNestedTypes) {
-				Annotations.Pop ();
+				Dependencies.Pop ();
 				return;
 			}
 
 			foreach (TypeDefinition nested in type.NestedTypes)
 				MarkAndPreserveAll (nested);
 
-			Annotations.Pop ();
+			Dependencies.Pop ();
 		}
 
 		void ProcessTypes (AssemblyDefinition assembly, XPathNodeIterator iterator)
@@ -168,10 +168,10 @@ namespace Mono.Linker.Steps {
 					if (assembly.MainModule.HasExportedTypes) {
 						foreach (var exported in assembly.MainModule.ExportedTypes) {
 							if (fullname == exported.FullName) {
-								Annotations.Push (exported);
+								Dependencies.Push (exported);
 								MarkingHelpers.MarkExportedType (exported, assembly.MainModule);
 								var resolvedExternal = exported.Resolve ();
-								Annotations.Pop ();
+								Dependencies.Pop ();
 								if (resolvedExternal != null) {
 									type = resolvedExternal;
 									break;
@@ -252,8 +252,8 @@ namespace Mono.Linker.Steps {
 			}
 
 			Annotations.Mark (type);
-			Annotations.Push (type);
-			Annotations.AddDirectDependency (this, type);
+			Dependencies.Push (type);
+			Dependencies.AddDirectDependency (this, type);
 
 			if (type.IsNested) {
 				var parent = type;
@@ -272,7 +272,7 @@ namespace Mono.Linker.Steps {
 				MarkSelectedEvents (nav, type);
 				MarkSelectedProperties (nav, type);
 			}
-			Annotations.Pop ();
+			Dependencies.Pop ();
 		}
 
 		void MarkSelectedFields (XPathNavigator nav, TypeDefinition type)
@@ -411,7 +411,7 @@ namespace Mono.Linker.Steps {
 		void MarkMethod (MethodDefinition method)
 		{
 			Annotations.Mark (method);
-			Annotations.AddDirectDependency (this, method);
+			Dependencies.AddDirectDependency (this, method);
 			Annotations.SetAction (method, MethodAction.Parse);
 		}
 
