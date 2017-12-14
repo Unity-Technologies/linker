@@ -129,6 +129,8 @@ namespace Mono.Linker {
 
 		public MarkingHelpers MarkingHelpers { get; private set; }
 
+		public Dependencies Dependencies { get; }
+
 		public LinkContext (Pipeline pipeline)
 			: this (pipeline, new AssemblyResolver ())
 		{
@@ -152,6 +154,8 @@ namespace Mono.Linker {
 			_annotations = annotations;
 			_readerParameters = readerParameters;
 			MarkingHelpers = CreateMarkingHelpers ();
+			Dependencies = CreateDependencies ();
+			_annotations.Dependencies = Dependencies;
 		}
 
 		public TypeDefinition GetType (string fullName)
@@ -334,6 +338,11 @@ namespace Mono.Linker {
 		protected virtual MarkingHelpers CreateMarkingHelpers ()
 		{
 			return new MarkingHelpers (this);
+		}
+
+		protected virtual Dependencies CreateDependencies ()
+		{
+			return new Dependencies (this);
 		}
 	}
 }
