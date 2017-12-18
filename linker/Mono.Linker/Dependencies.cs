@@ -73,8 +73,8 @@ namespace Mono.Linker
 			if (writer == null)
 				return;
 
-			if (!ShouldRecordDependencyInformation(b) & !ShouldRecordDependencyInformation(e))
-				return;
+			//if (!ShouldRecordDependencyInformation(b) & !ShouldRecordDependencyInformation(e))
+			//	return;
 
 			WriteEdge(b, e);
 		}
@@ -100,10 +100,17 @@ namespace Mono.Linker
 			if (writer == null)
 				return;
 
-			if (!WillAssemblyBeModified(definition.Module.Assembly))
-				return;
+			PushPrivate(definition, WillAssemblyBeModified(definition.Module.Assembly));
+		}
 
-			PushPrivate(definition);
+		public void Push(MethodDefinition definition)
+		{
+			Push(definition as IMemberDefinition);
+		}
+
+		public void Push(PropertyDefinition definition)
+		{
+			Push(definition as IMemberDefinition);
 		}
 
 		public void Push(AssemblyDefinition definition)
@@ -111,10 +118,15 @@ namespace Mono.Linker
 			if (writer == null)
 				return;
 
-			if (!WillAssemblyBeModified(definition))
+			PushPrivate(definition, WillAssemblyBeModified(definition));
+		}
+
+		public void Push(ModuleDefinition definition)
+		{
+			if (writer == null)
 				return;
 
-			PushPrivate(definition);
+			PushPrivate(definition, WillAssemblyBeModified(definition.Assembly));
 		}
 
 		public void Push(IMemberDefinition definition)
@@ -122,11 +134,38 @@ namespace Mono.Linker
 			if (writer == null)
 				return;
 
-			if (!WillAssemblyBeModified(definition.DeclaringType.Module.Assembly))
+			PushPrivate(definition, WillAssemblyBeModified(definition.DeclaringType.Module.Assembly));
+		}
+
+		public void Push(TypeReference reference)
+		{
+			if (writer == null)
 				return;
 
-			PushPrivate(definition);
+			if (reference is TypeDefinition definition)
+			{
+				Push(definition);
+				return;
+			}
+
+			PushPrivate(reference, WillAssemblyBeModified(reference.Resolve().Module.Assembly));
 		}
+
+		public void Push(MemberReference reference)
+		{
+			if (writer == null)
+				return;
+
+			if (reference is IMemberDefinition definition)
+			{
+				Push(definition);
+				return;
+			}
+
+			PushPrivate(reference, WillAssemblyBeModified(reference.Resolve().DeclaringType.Module.Assembly));
+		}
+
+
 
 		public void Push(ICustomAttributeProvider provider)
 		{
@@ -137,7 +176,7 @@ namespace Mono.Linker
 			//if (!WillAssemblyBeModified(definition.DeclaringType.Module.Assembly))
 			//	return;
 
-			PushPrivate(provider);
+			PushPrivate(provider, true);
 		}
 
 		public void Push(ExportedType exportedType)
@@ -149,7 +188,7 @@ namespace Mono.Linker
 			//if (!WillAssemblyBeModified(exportedType.DeclaringType.Module.Assembly))
 			//	return;
 
-			PushPrivate(exportedType);
+			PushPrivate(exportedType, true);
 		}
 
 		public void Push(IStep step)
@@ -157,7 +196,7 @@ namespace Mono.Linker
 			if (writer == null)
 				return;
 
-			PushPrivate(step);
+			PushPrivate(step, true);
 		}
 
 		public void Push(object o)
@@ -165,7 +204,12 @@ namespace Mono.Linker
 			if (writer == null)
 				return;
 
-			PushPrivate(o);
+			if (TryPushAsKnownType(o))
+			{
+				return;
+			}
+
+			PushPrivate(o, true);
 		}
 
 		public void Pop()
@@ -191,9 +235,9 @@ namespace Mono.Linker
 			dependency_stack = null;
 		}
 
-		void PushPrivate(object o)
+		void PushPrivate(object o, bool recordDep)
 		{
-			if (dependency_stack.Count > 0)
+			if (dependency_stack.Count > 0 && recordDep)
 				AddDependency(o);
 			dependency_stack.Push(o);
 		}
@@ -223,34 +267,66 @@ namespace Mono.Linker
 			return _context.Annotations.GetAction(assembly) == AssemblyAction.Link;
 		}
 
-		bool ShouldRecordDependencyInformation(object o)
+		private bool TryPushAsKnownType(object o)
 		{
-			if (o.ToString().Contains("WriteLine"))
-				Console.WriteLine();
-
 			if (o is TypeDefinition t)
 			{
-				return _context.Annotations.GetAction(t.Module.Assembly) == AssemblyAction.Link;
+				Push(t);
+				return true;
 			}
 
 			if (o is IMemberDefinition m)
 			{
-				return _context.Annotations.GetAction(m.DeclaringType.Module.Assembly) == AssemblyAction.Link;
+				Push(m);
+				return true;
 			}
 
 			if (o is TypeReference typeRef)
 			{
-				return _context.Annotations.GetAction(typeRef.Resolve().Module.Assembly) == AssemblyAction.Link;
+				Push(typeRef);
+				return true;
 			}
 
 			if (o is MemberReference mRef)
 			{
-				return _context.Annotations.GetAction(mRef.Resolve().DeclaringType.Module.Assembly) == AssemblyAction.Link;
+				Push(mRef);
+				return true;
 			}
 
 			if (o is ModuleDefinition module)
 			{
-				return _context.Annotations.GetAction(module.Assembly) == AssemblyAction.Link;
+				Push(module);
+				return true;
+			}
+
+			return false;
+		}
+
+		bool ShouldRecordDependencyInformation(object o)
+		{
+			if (o is TypeDefinition t)
+			{
+				return WillAssemblyBeModified(t.Module.Assembly);
+			}
+
+			if (o is IMemberDefinition m)
+			{
+				return WillAssemblyBeModified(m.DeclaringType.Module.Assembly);
+			}
+
+			if (o is TypeReference typeRef)
+			{
+				return WillAssemblyBeModified(typeRef.Resolve().Module.Assembly);
+			}
+
+			if (o is MemberReference mRef)
+			{
+				return WillAssemblyBeModified(mRef.Resolve().DeclaringType.Module.Assembly);
+			}
+
+			if (o is ModuleDefinition module)
+			{
+				return WillAssemblyBeModified(module.Assembly);
 			}
 
 			return true;

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="14.0">
   <!--
       TODO: Remove this workaround once supported.
@@ -72,6 +72,7 @@
     <Compile Include="Mono.Linker.Steps\CleanStep.cs" />
     <Compile Include="Mono.Linker.Steps\RegenerateGuidStep.cs" />
     <Compile Include="Mono.Linker.Steps\LoadI18nAssemblies.cs" />
+    <Compile Include="Mono.Linker\Dependencies.cs" />
     <Compile Include="Mono.Linker\IXApiVisitor.cs" />
     <Compile Include="Mono.Linker\I18nAssemblies.cs" />
     <Compile Include="Mono.Linker.Steps\IStep.cs" />
