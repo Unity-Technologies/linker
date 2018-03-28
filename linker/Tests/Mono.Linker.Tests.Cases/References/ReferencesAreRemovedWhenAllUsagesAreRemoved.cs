@@ -11,6 +11,9 @@ namespace Mono.Linker.Tests.Cases.References {
 	[RemovedAssembly ("System.dll")]
 	// Can be removed once this bug is fixed https://bugzilla.xamarin.com/show_bug.cgi?id=58168
 	[SkipPeVerify(SkipPeVerifyForToolchian.Pedump)]
+	// System.Core is being preserved in the class libraries via reflection
+	// PeVerify fails on the GAC System.Core used on windows
+	[SkipPeVerify("System.Core.dll")]
 	class ReferencesAreRemovedWhenAllUsagesAreRemoved {
 		public static void Main ()
 		{
