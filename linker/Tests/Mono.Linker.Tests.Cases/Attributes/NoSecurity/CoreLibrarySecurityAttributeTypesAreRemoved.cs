@@ -28,6 +28,10 @@ namespace Mono.Linker.Tests.Cases.Attributes.NoSecurity {
 	// Fails with `Runtime critical type System.Reflection.CustomAttributeData not found` which is a known short coming
 	[SkipPeVerify (SkipPeVerifyForToolchian.Pedump)]
 	[SkipPeVerify ("System.dll")]
+
+	// System.Core is being preserved in the class libraries via reflection
+	// PeVerify fails on the GAC System.Core used on windows
+	[SkipPeVerify("System.Core.dll")]
 	public class CoreLibrarySecurityAttributeTypesAreRemoved {
 		public static void Main ()
 		{

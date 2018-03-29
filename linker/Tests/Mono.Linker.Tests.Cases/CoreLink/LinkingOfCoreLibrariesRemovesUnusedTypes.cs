@@ -23,6 +23,9 @@ namespace Mono.Linker.Tests.Cases.CoreLink {
 	//  All sorts of stuff is flagged as invalid even in the original System.dll and System.Configuration.dll for mono class libraries
 	[SkipPeVerify("System.dll")]
 	[SkipPeVerify("System.Configuration.dll")]
+	// System.Core is being preserved in the class libraries via reflection
+	// PeVerify fails on the GAC System.Core used on windows
+	[SkipPeVerify("System.Core.dll")]
 	class LinkingOfCoreLibrariesRemovesUnusedTypes {
 		public static void Main ()
 		{
