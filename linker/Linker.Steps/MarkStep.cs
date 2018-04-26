@@ -43,9 +43,7 @@ namespace Mono.Linker.Steps {
 		protected LinkContext _context;
 		protected Queue<MethodDefinition> _methods;
 		protected List<MethodDefinition> _virtual_methods;
-		protected Dictionary<TypeDefinition, CustomAttribute> _assemblyDebuggerDisplayAttributes;
-		protected Dictionary<TypeDefinition, CustomAttribute> _assemblyDebuggerTypeProxyAttributes;
-		protected Queue<CustomAttribute> _topLevelAttributes;
+		protected Queue<TopLevelAttribute> _topLevelAttributes;
 		protected Queue<CustomAttribute> _lateMarkedAttributes;
 
 		public AnnotationStore Annotations {
@@ -62,11 +60,8 @@ namespace Mono.Linker.Steps {
 		{
 			_methods = new Queue<MethodDefinition> ();
 			_virtual_methods = new List<MethodDefinition> ();
-			_topLevelAttributes = new Queue<CustomAttribute> ();
+			_topLevelAttributes = new Queue<TopLevelAttribute> ();
 			_lateMarkedAttributes = new Queue<CustomAttribute> ();
-
-			_assemblyDebuggerDisplayAttributes = new Dictionary<TypeDefinition, CustomAttribute> ();
-			_assemblyDebuggerTypeProxyAttributes = new Dictionary<TypeDefinition, CustomAttribute> ();
 		}
 
 		public virtual void Process (LinkContext context)
@@ -273,13 +268,13 @@ namespace Mono.Linker.Steps {
 			}
 		}
 
-		void LazyMarkCustomAttributes (ICustomAttributeProvider provider)
+		void LazyMarkCustomAttributes (ICustomAttributeProvider provider, AssemblyDefinition assembly)
 		{
 			if (!provider.HasCustomAttributes)
 				return;
 
 			foreach (CustomAttribute ca in provider.CustomAttributes)
-				_topLevelAttributes.Enqueue (ca);
+				_topLevelAttributes.Enqueue (new TopLevelAttribute (ca, assembly));
 		}
 
 		protected virtual void MarkCustomAttribute (CustomAttribute ca)
@@ -323,16 +318,24 @@ namespace Mono.Linker.Steps {
 			return true;
 		}
 
-		protected virtual bool ShouldMarkTopLevelCustomAttribute (CustomAttribute ca, MethodDefinition resolvedConstructor)
+		protected virtual bool ShouldMarkTopLevelCustomAttribute (TopLevelAttribute tla, MethodDefinition resolvedConstructor)
 		{
-			if (!ShouldMarkCustomAttribute (ca))
+			if (!ShouldMarkCustomAttribute (tla.Attribute))
 				return false;
 
 			// If an attribute's module has not been marked after processing all types in all assemblies and the attribute itself has not been marked,
 			// then surely nothing is using this attribute and there is no need to mark it
-			if (!Annotations.IsMarked (resolvedConstructor.Module) && !Annotations.IsMarked (ca.AttributeType))
+			if (!Annotations.IsMarked (resolvedConstructor.Module) && !Annotations.IsMarked (tla.Attribute.AttributeType))
 				return false;
 
+			string attributeFullName = tla.Attribute.Constructor.DeclaringType.FullName;
+			if (attributeFullName == "System.Diagnostics.DebuggerDisplayAttribute" ||
+				attributeFullName == "System.Diagnostics.DebuggerTypeProxyAttribute") {
+				var displayTargetType = GetDebuggerTypeTarget (tla);
+				if (displayTargetType == null || !Annotations.IsMarked (displayTargetType))
+					return false;
+			}
+			
 			return true;
 		}
 
@@ -541,7 +544,7 @@ namespace Mono.Linker.Steps {
 			MarkSecurityDeclarations (assembly);
 
 			foreach (ModuleDefinition module in assembly.Modules)
-				LazyMarkCustomAttributes (module);
+				LazyMarkCustomAttributes (module, assembly);
 		}
 
 		void ProcessModule (AssemblyDefinition assembly)
@@ -564,11 +567,12 @@ namespace Mono.Linker.Steps {
 			if (startingQueueCount == 0)
 				return false;
 
-			var skippedItems = new List<CustomAttribute> ();
+			var skippedItems = new List<TopLevelAttribute> ();
 			var markOccurred = false;
 
 			while (_topLevelAttributes.Count != 0) {
-				var customAttribute = _topLevelAttributes.Dequeue ();
+				var topLevelAttribute = _topLevelAttributes.Dequeue ();
+				var customAttribute = topLevelAttribute.Attribute;
 
 				var resolved = customAttribute.Constructor.Resolve ();
 				if (resolved == null) {
@@ -576,9 +580,19 @@ namespace Mono.Linker.Steps {
 					continue;
 				}
 
-				if (!ShouldMarkTopLevelCustomAttribute (customAttribute, resolved)) {
-					skippedItems.Add (customAttribute);
+				if (!ShouldMarkTopLevelCustomAttribute (topLevelAttribute, resolved)) {
+					skippedItems.Add (topLevelAttribute);
 					continue;
+				}
+
+				string attributeFullName = customAttribute.Constructor.DeclaringType.FullName;
+				switch (attributeFullName) {
+				case "System.Diagnostics.DebuggerDisplayAttribute":
+					MarkTypeWithDebuggerDisplayAttribute (GetDebuggerTypeTarget (topLevelAttribute), customAttribute);
+					break;
+				case "System.Diagnostics.DebuggerTypeProxyAttribute":
+					MarkTypeWithDebuggerTypeProxyAttribute (GetDebuggerTypeTarget (topLevelAttribute), customAttribute);
+					break;
 				}
 
 				markOccurred = true;
@@ -771,59 +785,34 @@ namespace Mono.Linker.Steps {
 			if (!assembly.HasCustomAttributes)
 				return;
 
-			foreach (CustomAttribute attribute in assembly.CustomAttributes) {
-				string attributeFullName = attribute.Constructor.DeclaringType.FullName;
-				switch (attributeFullName) {
-				case "System.Diagnostics.DebuggerDisplayAttribute":
-					StoreDebuggerTypeTarget (assembly, attribute, _assemblyDebuggerDisplayAttributes);
-					break;
-				case "System.Diagnostics.DebuggerTypeProxyAttribute":
-					StoreDebuggerTypeTarget (assembly, attribute, _assemblyDebuggerTypeProxyAttributes);
-					break;
-				default:
-					_topLevelAttributes.Enqueue (attribute);
-					break;
-				}
-			}
+			foreach (CustomAttribute attribute in assembly.CustomAttributes)
+				_topLevelAttributes.Enqueue (new TopLevelAttribute (attribute, assembly));
 		}
 
-		void StoreDebuggerTypeTarget (AssemblyDefinition assembly, CustomAttribute attribute, Dictionary<TypeDefinition, CustomAttribute> dictionary)
+		TypeDefinition GetDebuggerTypeTarget (TopLevelAttribute tla)
 		{
-			if (_context.KeepMembersForDebuggerAttributes) {
-				TypeReference targetTypeReference = null;
-				TypeDefinition targetTypeDefinition = null;
-				foreach (var property in attribute.Properties) {
-					if (property.Name == "Target") {
-						targetTypeReference = (TypeReference) property.Argument.Value;
-						break;
-					}
-
-					if (property.Name == "TargetTypeName") {
-						targetTypeReference = assembly.MainModule.GetType ((string) property.Argument.Value);
-						break;
-					}
+			TypeReference targetTypeReference = null;
+			TypeDefinition targetTypeDefinition = null;
+			foreach (var property in tla.Attribute.Properties) {
+				if (property.Name == "Target") {
+					targetTypeReference = (TypeReference) property.Argument.Value;
+					break;
 				}
 
-				if (targetTypeReference != null) {
-					targetTypeDefinition = ResolveTypeDefinition (targetTypeReference);
-					if (targetTypeDefinition != null) {
-						dictionary[targetTypeDefinition] = attribute;
-					}
+				if (property.Name == "TargetTypeName") {
+					targetTypeReference = tla.Assembly.MainModule.GetType((string) property.Argument.Value);
+					break;
 				}
 			}
-		}
 
+			if (targetTypeReference != null) 
+				return ResolveTypeDefinition (targetTypeReference);
+					
+			return null;
+		}
+		
 		void MarkTypeSpecialCustomAttributes (TypeDefinition type)
 		{
-			CustomAttribute debuggerAttribute;
-			if (_assemblyDebuggerDisplayAttributes.TryGetValue (type, out debuggerAttribute)) {
-				MarkTypeWithDebuggerDisplayAttribute (type, debuggerAttribute);
-			}
-
-			if (_assemblyDebuggerTypeProxyAttributes.TryGetValue (type, out debuggerAttribute)) {
-				MarkTypeWithDebuggerTypeProxyAttribute (type, debuggerAttribute);
-			}
-
 			if (!type.HasCustomAttributes)
 				return;
 
@@ -1795,6 +1784,17 @@ namespace Mono.Linker.Steps {
 			}
 
 			return operands;
+		}
+
+		protected class TopLevelAttribute {
+			public TopLevelAttribute(CustomAttribute attribute, AssemblyDefinition assembly)
+			{
+				Attribute = attribute;
+				Assembly = assembly;
+			}
+
+			public CustomAttribute Attribute { get; private set; }
+			public AssemblyDefinition Assembly { get; private set; }
 		}
 	}
 
