@@ -125,6 +125,11 @@ namespace Mono.Linker.Tests.TestCases
 		{
 			return NUnitCasesBySuiteName ("CommandLine");
 		}
+		
+		public static IEnumerable<TestCaseData> LazyBodyTests ()
+		{
+			return NUnitCasesBySuiteName ("LazyBody");
+		}
 
 		public static TestCaseCollector CreateCollector ()
 		{

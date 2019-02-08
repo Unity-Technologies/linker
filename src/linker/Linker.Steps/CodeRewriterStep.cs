@@ -50,8 +50,10 @@ namespace Mono.Linker.Steps {
 			method.ImplAttributes &= ~(MethodImplAttributes.AggressiveInlining | MethodImplAttributes.Synchronized);
 			method.ImplAttributes |= MethodImplAttributes.NoInlining;
 
+			var originalBody = method.Body;
 			method.Body = CreateThrowLinkedAwayBody (method);
 			ClearDebugInformation (method);
+			MethodConvertedToThrow (originalBody, method.Body);
 		}
 
 		void RewriteBodyToStub (MethodDefinition method)
@@ -157,6 +159,10 @@ namespace Mono.Linker.Steps {
 				di.Scope.Constants.Clear ();
 				di.Scope = null;
 			}
+		}
+		
+		protected virtual void MethodConvertedToThrow (MethodBody original, MethodBody converted)
+		{
 		}
 	}
 }

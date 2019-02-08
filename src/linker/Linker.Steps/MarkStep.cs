@@ -46,6 +46,7 @@ namespace Mono.Linker.Steps {
 		protected Queue<AttributeProviderPair> _assemblyLevelAttributes;
 		protected Queue<AttributeProviderPair> _lateMarkedAttributes;
 		protected List<TypeDefinition> _typesWithInterfaces;
+		protected List<MethodBody> _pendingBodies;
 
 		public AnnotationStore Annotations {
 			get { return _context.Annotations; }
@@ -64,6 +65,7 @@ namespace Mono.Linker.Steps {
 			_assemblyLevelAttributes = new Queue<AttributeProviderPair> ();
 			_lateMarkedAttributes = new Queue<AttributeProviderPair> ();
 			_typesWithInterfaces = new List<TypeDefinition> ();
+			_pendingBodies = new List<MethodBody> ();
 		}
 
 		public virtual void Process (LinkContext context)
@@ -72,6 +74,7 @@ namespace Mono.Linker.Steps {
 
 			Initialize ();
 			Process ();
+			Complete ();
 		}
 
 		void Initialize ()
@@ -91,6 +94,18 @@ namespace Mono.Linker.Steps {
 			} finally {
 				Tracer.Pop ();
 			}
+		}
+
+		void Complete ()
+		{
+			bool anyConverted = false;
+			foreach (var body in _pendingBodies) {
+				anyConverted = true;
+				Annotations.SetAction (body.Method, MethodAction.ConvertToThrow);
+			}
+
+			if (anyConverted)
+				MarkAndCacheNotSupportedCtorString ();
 		}
 
 		void InitializeType (TypeDefinition type)
@@ -187,6 +202,7 @@ namespace Mono.Linker.Steps {
 				ProcessQueue ();
 				ProcessVirtualMethods ();
 				ProcessMarkedTypesWithInterfaces ();
+				ProcessPendingBodies ();
 				DoAdditionalProcessing ();
 			}
 
@@ -238,6 +254,17 @@ namespace Mono.Linker.Steps {
 					continue;
 
 				MarkInterfaceImplementations (type);
+			}
+		}
+
+		void ProcessPendingBodies ()
+		{
+			for (int i = 0; i < _pendingBodies.Count; i++) {
+				var body = _pendingBodies [i];
+				if (Annotations.IsInstantiated (body.Method.DeclaringType)) {
+					MarkMethodBody (body);
+					_pendingBodies.RemoveAt (i--);
+				}
 			}
 		}
 
@@ -1861,23 +1888,28 @@ namespace Mono.Linker.Steps {
 				break;
 
 			case MethodAction.ConvertToThrow:
-				if (_context.MarkedKnownMembers.NotSupportedExceptionCtorString != null)
-					break;
-
-				var nse = BCL.FindPredefinedType ("System", "NotSupportedException", _context);
-				if (nse == null)
-					throw new NotSupportedException ("Missing predefined 'System.NotSupportedException' type");
-
-				MarkType (nse);
-
-				var nseCtor = MarkMethodIf (nse.Methods, KnownMembers.IsNotSupportedExceptionCtorString);
-				if (nseCtor == null)
-					throw new MarkException ($"Could not find constructor on '{nse.FullName}'");
-
-				_context.MarkedKnownMembers.NotSupportedExceptionCtorString = nseCtor;
+				MarkAndCacheNotSupportedCtorString ();
 				break;
 			}
-		}		
+		}
+
+		void MarkAndCacheNotSupportedCtorString ()
+		{
+			if (_context.MarkedKnownMembers.NotSupportedExceptionCtorString != null)
+				return;
+
+			var nse = BCL.FindPredefinedType ("System", "NotSupportedException", _context);
+			if (nse == null)
+				throw new NotSupportedException ("Missing predefined 'System.NotSupportedException' type");
+
+			MarkType (nse);
+
+			var nseCtor = MarkMethodIf (nse.Methods, KnownMembers.IsNotSupportedExceptionCtorString);
+			if (nseCtor == null)
+				throw new MarkException ($"Could not find constructor on '{nse.FullName}'");
+
+			_context.MarkedKnownMembers.NotSupportedExceptionCtorString = nseCtor;
+		}
 
 		void MarkBaseMethods (MethodDefinition method)
 		{
@@ -2010,6 +2042,17 @@ namespace Mono.Linker.Steps {
 
 		protected virtual void MarkMethodBody (MethodBody body)
 		{
+			if (_context.IsOptimizationEnabled (CodeOptimizations.LazyBodyMarking)) {
+				// TODO by Mike : Do I need to check assembly action?
+				if (!body.Method.IsStatic
+				    && !Annotations.IsInstantiated (body.Method.DeclaringType)
+				    && Annotations.GetAction(body.Method) != MethodAction.ForceParse
+				    && IsWorthConvertingToThrow(body)) {
+					_pendingBodies.Add (body);
+					return;
+				}
+			}
+
 			foreach (VariableDefinition var in body.Variables)
 				MarkType (var.VariableType);
 
@@ -2025,6 +2068,18 @@ namespace Mono.Linker.Steps {
 			MarkThingsUsedViaReflection (body);
 
 			PostMarkMethodBody (body);
+		}
+
+		static bool IsWorthConvertingToThrow (MethodBody body)
+		{
+			// Some bodies are cheaper size wise to leave alone than to convert to a throw
+			var instructions = body.Instructions;
+			if (instructions.Count == 1 && instructions [0].OpCode.Code == Code.Ret)
+				return false;
+
+			// We could add a few more checks in the future such as return null, true, false, etc.
+
+			return true;
 		}
 
 		partial void PostMarkMethodBody (MethodBody body);

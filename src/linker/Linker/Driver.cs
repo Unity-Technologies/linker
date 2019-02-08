@@ -364,6 +364,9 @@ namespace Mono.Linker {
 						case "overrideremoval":
 							context.DisabledOptimizations |= CodeOptimizations.OverrideRemoval;
 							break;
+						case "lazybodymarking":
+							context.DisabledOptimizations |= CodeOptimizations.LazyBodyMarking;
+							break;
 						}
 					}
 				}

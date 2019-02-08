@@ -178,6 +178,7 @@
     <Compile Include="CoreLink\DelegateAndMulticastDelegateKeepInstantiatedReqs.cs" />
     <Compile Include="CoreLink\NeverInstantiatedTypeWithOverridesFromObject.cs" />
     <Compile Include="CoreLink\NoSecurityPlusOnlyKeepUsedRemovesAllSecurityAttributesFromCoreLibraries.cs" />
+    <Compile Include="Inheritance.AbstractClasses\NoKeptCtor\OverrideRemoval\OverrideOfAbstractIsKeptNonEmpty.cs" />
     <Compile Include="CoreLink\InstantiatedTypeWithOverridesFromObject.cs" />
     <Compile Include="Inheritance.AbstractClasses\NoKeptCtor\OverrideRemoval\CanDisableOverrideRemoval.cs" />
     <Compile Include="Inheritance.AbstractClasses\NoKeptCtor\OverrideRemoval\OverrideOfAbstractIsKept.cs" />
@@ -288,6 +289,18 @@
     <Compile Include="Inheritance.VirtualMethods\UsedTypeWithOverrideOfVirtualMethodHasOverrideKept.cs" />
     <Compile Include="Inheritance.VirtualMethods\VirtualMethodGetsPerservedIfBaseMethodGetsInvoked.cs" />
     <Compile Include="Inheritance.VirtualMethods\VirtualMethodGetsStrippedIfImplementingMethodGetsInvokedDirectly.cs" />
+    <Compile Include="LazyBody\CanDisableLazyBodyMarking.cs" />
+    <Compile Include="LazyBody\EmptyMethodIsNotStubbed.cs" />
+    <Compile Include="LazyBody\OverrideOfAbstractAndInterfaceMethodCalledFromLocal.cs" />
+    <Compile Include="LazyBody\OverrideOfAbstractAndInterfaceMethodCalledFromLocal2.cs" />
+    <Compile Include="LazyBody\OverrideOfAbstractAndInterfaceMethodCalledFromLocal3.cs" />
+    <Compile Include="LazyBody\OverrideOfAbstractAndInterfaceMethodWhenInterfaceRemoved2.cs" />
+    <Compile Include="LazyBody\OverrideOfAbstractIsStubbed.cs" />
+    <Compile Include="LazyBody\OverrideOfAbstractIsStubbedWithUnusedInterface.cs" />
+    <Compile Include="LazyBody\SimpleGetter.cs" />
+    <Compile Include="LazyBody\SimpleMethod.cs" />
+    <Compile Include="LazyBody\OverrideOfAVirtual.cs" />
+    <Compile Include="LazyBody\SimpleSetter.cs" />
     <Compile Include="Libraries\CanLinkPublicApisOfLibrary.cs" />
     <Compile Include="Libraries\DefaultLibraryLinkBehavior.cs" />
     <Compile Include="Libraries\Dependencies\UserAssemblyActionWorks_Lib.cs" />
