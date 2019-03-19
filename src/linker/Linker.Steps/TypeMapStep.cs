@@ -93,7 +93,7 @@ namespace Mono.Linker.Steps {
 
 					var @base = GetBaseMethodInTypeHierarchy (type, interfaceMethod);
 					if (@base != null)
-						AnnotateMethods (interfaceMethod, @base);
+						AnnotateMethods (interfaceMethod, @base, @interface);
 					
 					if(interfaceMethod.FullName.Contains("Mono.Linker") && interfaceMethod.Name.Contains("Method"))
 						Console.WriteLine();
@@ -252,10 +252,10 @@ namespace Mono.Linker.Steps {
 			Annotations.SetClassHierarchy (type, bases);
 		}
 
-		void AnnotateMethods (MethodDefinition @base, MethodDefinition @override)
+		void AnnotateMethods (MethodDefinition @base, MethodDefinition @override, InterfaceImplementation matchingInterfaceImplementation = null)
 		{
 			Annotations.AddBaseMethod (@override, @base);
-			Annotations.AddOverride (@base, @override);
+			Annotations.AddOverride (@base, @override, matchingInterfaceImplementation);
 		}
 
 		static MethodDefinition GetBaseMethodInTypeHierarchy (MethodDefinition method)
