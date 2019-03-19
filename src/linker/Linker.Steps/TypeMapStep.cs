@@ -1,4 +1,4 @@
-﻿//
+//
 // TypeMapStep.cs
 //
 // Author:
@@ -141,7 +141,7 @@ namespace Mono.Linker.Steps {
 			
 			var methodReference = new MethodReference(interfaceMethod.Name, interfaceMethod.ReturnType, candidateType) {HasThis = interfaceMethod.HasThis};
 			
-			if (interfaceMethod.ReturnType is GenericInstanceType)
+			if (interfaceMethod.ReturnType.IsGenericParameter || interfaceMethod.ReturnType.IsGenericInstance)
 				methodReference.ReturnType = Inflater.InflateType (context, interfaceMethod.ReturnType);
 			
 			foreach (var p in interfaceMethod.Parameters)
@@ -149,7 +149,7 @@ namespace Mono.Linker.Steps {
 				if(interfaceMethod.FullName.Contains("Mono.Linker") && interfaceMethod.Name.Contains("Method"))
 					Console.WriteLine();
 				
-				if (p.ParameterType.IsGenericParameter)
+				if (p.ParameterType.IsGenericParameter || p.ParameterType.IsGenericInstance)
 					methodReference.Parameters.Add(new ParameterDefinition(p.Name, p.Attributes, Inflater.InflateType(context, p.ParameterType)));
 				else
 					methodReference.Parameters.Add(new ParameterDefinition(p.Name, p.Attributes, p.ParameterType));
