@@ -9,22 +9,21 @@ namespace Mono.Linker.Tests.Cases.Inheritance.Interfaces.OnReferenceType.BasePro
 		}
 
 		[Kept]
-		[KeptMember (".ctor()")]
 		class GenericType<T> {
 		}
 
 		[Kept]
 		interface IFoo<T> {
 			[Kept]
-			GenericType<T> Property { get; [Kept] set; }
+			GenericType<T> Property { [Kept] get; set; }
 		}
 
 		[Kept]
 		[KeptMember (".ctor()")]
 		class BaseFoo {
-//			[Kept]
-//			[KeptBackingField]
-			public GenericType<object> Property { /* [Kept] */ get; set; }
+			[Kept]
+			[KeptBackingField]
+			public GenericType<object> Property { [Kept] get; set; }
 		}
 
 		[Kept]
