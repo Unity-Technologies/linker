@@ -268,7 +268,13 @@ namespace Mono.Linker.Steps {
 
 			var isInstantiated = Annotations.IsInstantiated (method.DeclaringType);
 			
+			if(method.FullName.Contains("Mono.Linker"))
+				Console.WriteLine();
+			
 			if(method.FullName.Contains("Mono.Linker") && method.Name.Contains("Method"))
+				Console.WriteLine();
+			
+			if(method.FullName.Contains("Mono.Linker") && method.Name.Contains("Property"))
 				Console.WriteLine();
 
 			// We don't need to mark overrides until it is possible that the type could be instantiated

@@ -1,4 +1,4 @@
-//
+﻿//
 // TypeMapStep.cs
 //
 // Author:
@@ -80,6 +80,9 @@ namespace Mono.Linker.Steps {
 				var iface =interfaceType.Resolve ();
 				if (iface == null || !iface.HasMethods)
 					continue;
+				
+				if (type.FullName.Contains("Mono.Linker"))
+					Console.WriteLine();
 
 				foreach (MethodDefinition interfaceMethod in iface.Methods) {
 					if(interfaceMethod.FullName.Contains("Mono.Linker") && interfaceMethod.Name.Contains("Method"))
@@ -133,6 +136,9 @@ namespace Mono.Linker.Steps {
 
 		static MethodReference CreateNonGenericCandidate(Inflater.GenericContext context, TypeDefinition candidateType, MethodDefinition interfaceMethod)
 		{
+			if (interfaceMethod.FullName.Contains("Mono.Linker") && interfaceMethod.Name.Contains("Property"))
+				Console.WriteLine();
+			
 			var methodReference = new MethodReference(interfaceMethod.Name, interfaceMethod.ReturnType, candidateType) {HasThis = interfaceMethod.HasThis};
 			
 			if (interfaceMethod.ReturnType is GenericInstanceType)
