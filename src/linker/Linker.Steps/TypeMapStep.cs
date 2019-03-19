@@ -1,4 +1,4 @@
-﻿//
+//
 // TypeMapStep.cs
 //
 // Author:
@@ -134,6 +134,9 @@ namespace Mono.Linker.Steps {
 		static MethodReference CreateNonGenericCandidate(Inflater.GenericContext context, TypeDefinition candidateType, MethodDefinition interfaceMethod)
 		{
 			var methodReference = new MethodReference(interfaceMethod.Name, interfaceMethod.ReturnType, candidateType) {HasThis = interfaceMethod.HasThis};
+			
+			if (interfaceMethod.ReturnType is GenericInstanceType)
+				methodReference.ReturnType = Inflater.InflateType (context, interfaceMethod.ReturnType);
 			
 			foreach (var p in interfaceMethod.Parameters)
 			{
