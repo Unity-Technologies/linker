@@ -1,30 +1,30 @@
 using Mono.Linker.Tests.Cases.Expectations.Assertions;
 
 namespace Mono.Linker.Tests.Cases.Inheritance.Interfaces.OnReferenceType.BaseProvidesInterfaceMember {
-	public class GenericInterfaceWithProperty {
+	public class GenericInterfaceWithMethod2 {
 		public static void Main ()
 		{
 			IFoo<object> f = new FooWithBase ();
-			f.Property = new GenericType<object> ();
+			f.Method (null);
 		}
 
 		[Kept]
-		[KeptMember (".ctor()")]
 		class GenericType<T> {
 		}
 
 		[Kept]
 		interface IFoo<T> {
 			[Kept]
-			GenericType<T> Property { get; [Kept] set; }
+			void Method (GenericType<T> arg);
 		}
 
 		[Kept]
 		[KeptMember (".ctor()")]
 		class BaseFoo {
-//			[Kept]
-//			[KeptBackingField]
-			public GenericType<object> Property { get; /* [Kept] */ set; }
+			[Kept]
+			public void Method (GenericType<object> arg)
+			{
+			}
 		}
 
 		[Kept]
