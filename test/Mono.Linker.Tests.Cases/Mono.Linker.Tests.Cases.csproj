@@ -205,6 +205,7 @@
     <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodManyBases3.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodManyVariations.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodNested.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithProperty2.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\SimpleEvent.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithEvent.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithProperty.cs" />
