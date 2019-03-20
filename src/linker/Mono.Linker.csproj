@@ -91,10 +91,12 @@
     <Compile Include="Linker\MarkException.cs" />
     <Compile Include="Linker\MarkingHelpers.cs" />
     <Compile Include="Linker\MethodAction.cs" />
+    <Compile Include="Linker\MethodReferenceComparer.cs" />
     <Compile Include="Linker\MethodReferenceExtensions.cs" />
     <Compile Include="Linker\Pipeline.cs" />
     <Compile Include="Linker\TypeDefinitionExtensions.cs" />
     <Compile Include="Linker\TypePreserve.cs" />
+    <Compile Include="Linker\TypeReferenceEqualityComparer.cs" />
     <Compile Include="Linker\TypeReferenceExtensions.cs" />
     <Compile Include="Linker\TypeNameParser.cs" />
     <Compile Include="Linker\XApiReader.cs" />
