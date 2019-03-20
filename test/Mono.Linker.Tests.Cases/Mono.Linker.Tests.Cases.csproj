@@ -290,6 +290,7 @@
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedComInterfaceIsRemovedWhenComFeatureExcluded.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedExplicitInterfaceHasMethodPreservedViaXml.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedExplicitInterfaceIsRemoved.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedGenericInterfaceIsRemoved.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedInterfaceHasMethodPreservedViaXml.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedInterfaceTypeIsRemoved.cs" />
     <Compile Include="Inheritance.Interfaces\OnValueType\NoKeptCtor\InterfaceCanBeRemovedFromClassWithOnlyStaticMethodUsed.cs" />
