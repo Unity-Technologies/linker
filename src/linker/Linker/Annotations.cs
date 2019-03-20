@@ -56,6 +56,7 @@ namespace Mono.Linker {
 		protected readonly HashSet<CustomAttribute> marked_attributes = new HashSet<CustomAttribute> ();
 		readonly HashSet<TypeDefinition> marked_types_with_cctor = new HashSet<TypeDefinition> ();
 		protected readonly HashSet<TypeDefinition> marked_instantiated = new HashSet<TypeDefinition> ();
+		protected readonly HashSet<TypeReference> marked_generic_instance_interfaces = new HashSet<TypeReference>(new TypeReferenceEqualityComparer());
 
 		[DebuggerDisplay("{Method}")]
 		public class OverrideInformation
@@ -125,8 +126,30 @@ namespace Mono.Linker {
 
 		public void Mark (IMetadataTokenProvider provider)
 		{
+			if (provider is InterfaceImplementation info)
+			{
+				if(info.InterfaceType.ToString().Contains("Mono.Linker") && info.InterfaceType.ToString().Contains("IFoo"))
+					Console.WriteLine();
+			}
+
 			marked.Add (provider);
 			Tracer.AddDependency (provider, true);
+		}
+
+		public void MarkInterfaceGenericInstance(GenericInstanceType interfaceType)
+		{
+			if(interfaceType.ToString().Contains("Mono.Linker"))
+				Console.WriteLine();
+
+			marked_generic_instance_interfaces.Add(interfaceType);
+		}
+		
+		public bool IsInterfaceGenericInstanceMarked(GenericInstanceType interfaceType)
+		{
+			if(interfaceType.ToString().Contains("Mono.Linker"))
+				Console.WriteLine();
+			
+			return marked_generic_instance_interfaces.Contains(interfaceType);
 		}
 
 		public void Mark (CustomAttribute attribute)

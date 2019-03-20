@@ -215,6 +215,9 @@ namespace Mono.Linker.Steps {
 
 		protected virtual void EnqueueMethod (MethodDefinition method)
 		{
+			if(method.FullName.Contains("Mono.Linker") && method.Name.Contains("Method"))
+				Console.WriteLine();
+			
 			_methods.Enqueue (method);
 		}
 
@@ -291,12 +294,15 @@ namespace Mono.Linker.Steps {
 
 		bool IsInterfaceOverrideThatDoesNotNeedMarked (AnnotationStore.OverrideInformation overrideInformation, MethodDefinition @base, bool isInstantiated)
 		{
+			if(overrideInformation.Method.FullName.Contains("Mono.Linker") && overrideInformation.Method.Name.Contains("Method"))
+				Console.WriteLine();
+			
+			if (overrideInformation.MatchingInterfaceImplementation != null)
+				return !Annotations.IsMarked (overrideInformation.MatchingInterfaceImplementation);
+			
 			var possibleInterfaceType = @base.DeclaringType;
 			if (!possibleInterfaceType.IsInterface || isInstantiated)
 				return false;
-
-			if (overrideInformation.MatchingInterfaceImplementation != null)
-				return !Annotations.IsMarked (overrideInformation.MatchingInterfaceImplementation);
 
 			var overrideType = overrideInformation.Method.DeclaringType;
 
@@ -963,23 +969,26 @@ namespace Mono.Linker.Steps {
 			if (reference == null)
 				return null;
 
-			reference = GetOriginalType (reference);
+			var originalReference = GetOriginalType (reference);
 
-			if (reference is FunctionPointerType)
+			if (originalReference is FunctionPointerType)
 				return null;
 
-			if (reference is GenericParameter)
+			if (originalReference is GenericParameter)
 				return null;
 
 //			if (IgnoreScope (reference.Scope))
 //				return null;
 
-			TypeDefinition type = ResolveTypeDefinition (reference);
+			TypeDefinition type = ResolveTypeDefinition (originalReference);
 
 			if (type == null) {
-				HandleUnresolvedType (reference);
+				HandleUnresolvedType (originalReference);
 				return null;
 			}
+			
+			if (type.IsInterface && reference is GenericInstanceType genericInstanceType)
+				Annotations.MarkInterfaceGenericInstance(genericInstanceType);
 
 			if (CheckProcessed (type))
 				return null;
@@ -1688,6 +1697,9 @@ namespace Mono.Linker.Steps {
 
 		protected virtual MethodDefinition MarkMethod (MethodReference reference)
 		{
+			if(reference.FullName.Contains("Mono.Linker"))
+				Console.WriteLine();
+			
 			reference = GetOriginalMethod (reference);
 
 			if (reference.DeclaringType is ArrayType)
@@ -1753,6 +1765,9 @@ namespace Mono.Linker.Steps {
 		{
 			if (CheckProcessed (method))
 				return;
+			
+			if(method.FullName.Contains("Mono.Linker") && method.Name.Contains("Method"))
+				Console.WriteLine();
 
 			Tracer.Push (method);
 			MarkType (method.DeclaringType);
@@ -2123,10 +2138,18 @@ namespace Mono.Linker.Steps {
 
 		protected virtual bool ShouldMarkInterfaceImplementation (TypeDefinition type, InterfaceImplementation iface, TypeDefinition resolvedInterfaceType)
 		{
+			if(type.FullName.Contains("Mono.Linker"))
+				Console.WriteLine();
+			
 			if (Annotations.IsMarked (iface))
 				return false;
 
-			if (Annotations.IsMarked (resolvedInterfaceType) && !Annotations.IsMarked (iface))
+			if (iface.InterfaceType is GenericInstanceType genericInstanceType)
+			{
+				if (Annotations.IsInterfaceGenericInstanceMarked(genericInstanceType) && !Annotations.IsMarked(iface))
+					return true;
+			}
+			else if (Annotations.IsMarked (resolvedInterfaceType) && !Annotations.IsMarked (iface))
 				return true;
 
 			// It's hard to know if a com or windows runtime interface will be needed from managed code alone,
@@ -2142,6 +2165,8 @@ namespace Mono.Linker.Steps {
 			MarkCustomAttributes (iface);
 			MarkType (iface.InterfaceType);
 			Annotations.Mark (iface);
+			if (iface.InterfaceType is GenericInstanceType genericInstanceType)
+				Annotations.MarkInterfaceGenericInstance(genericInstanceType);
 		}
 
 		bool CheckReflectionMethod (Instruction instruction, string reflectionMethod)
