@@ -243,7 +243,7 @@ namespace Mono.Linker.Steps {
 
 		void ProcessVirtualMethod (MethodDefinition method)
 		{
-			if(method.FullName.Contains("Mono.Linker") && method.Name.Contains("Method"))
+			if(method.FullName.Contains("Mono.Linker"))
 				Console.WriteLine();
 			
 			var overrides = Annotations.GetOverrides (method);
@@ -289,7 +289,7 @@ namespace Mono.Linker.Steps {
 
 				// If none of the other interfaces on the type that implement the interface from the @base type are marked, then it's safe to skip
 				// marking this override
-				if (!derivedInterfaceTypes.Any (d => IsInterfaceImplementationMarked (overrideInformation, d)))
+				if (!derivedInterfaceTypes.Any (d => IsInterfaceImplementationMarked (overrideInformation.Method.DeclaringType, d)))
 					return;
 			}
 
@@ -298,13 +298,37 @@ namespace Mono.Linker.Steps {
 
 			MarkMethod (method);
 			ProcessVirtualMethod (method);
+			if (overrideInformation.MatchingInterfaceImplementation != null)
+				MarkInterfaceImplementation(overrideInformation.MatchingInterfaceImplementation);
 		}
 
 		bool IsInterfaceImplementationMarked (AnnotationStore.OverrideInformation overrideInformation, TypeDefinition interfaceType)
 		{
+			if(overrideInformation.Method.FullName.Contains("Mono.Linker"))
+				Console.WriteLine();
+			
 			if (overrideInformation.MatchingInterfaceImplementation != null)
 				return Annotations.IsMarked(overrideInformation.MatchingInterfaceImplementation);
-			return overrideInformation.Method.DeclaringType.HasInterface (@interfaceType, out InterfaceImplementation implementation) && Annotations.IsMarked (implementation);
+
+			var found = overrideInformation.Method.DeclaringType.HasInterface(@interfaceType, out InterfaceImplementation implementation);
+			
+			if(found)
+				throw new NotImplementedException();
+			
+			return found && Annotations.IsMarked (implementation);
+		}
+		
+		bool IsInterfaceImplementationMarked (TypeDefinition type, TypeDefinition interfaceType)
+		{
+			if(type.FullName.Contains("Mono.Linker"))
+				Console.WriteLine();
+
+			var found = type.HasInterface(@interfaceType, out InterfaceImplementation implementation);
+			
+//			if(found)
+//				throw new NotImplementedException();
+			
+			return found && Annotations.IsMarked (implementation);
 		}
 
 		void MarkMarshalSpec (IMarshalInfoProvider spec)

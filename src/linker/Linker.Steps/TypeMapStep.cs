@@ -1,4 +1,4 @@
-//
+﻿//
 // TypeMapStep.cs
 //
 // Author:
@@ -88,6 +88,9 @@ namespace Mono.Linker.Steps {
 					if(interfaceMethod.FullName.Contains("Mono.Linker") && interfaceMethod.Name.Contains("Method"))
 						Console.WriteLine();
 					
+					if(interfaceMethod.FullName.Contains("Mono.Linker") && interfaceMethod.Name.Contains("Property"))
+						Console.WriteLine();
+					
 					if (TryMatchMethod (type, interfaceMethod) != null)
 						continue;
 
@@ -146,7 +149,7 @@ namespace Mono.Linker.Steps {
 			
 			foreach (var p in interfaceMethod.Parameters)
 			{
-				if(interfaceMethod.FullName.Contains("Mono.Linker") && interfaceMethod.Name.Contains("Method"))
+				if(interfaceMethod.FullName.Contains("Mono.Linker") && interfaceMethod.Name.Contains("Property"))
 					Console.WriteLine();
 				
 				if (p.ParameterType.IsGenericParameter || p.ParameterType.IsGenericInstance)
@@ -213,8 +216,8 @@ namespace Mono.Linker.Steps {
 
 		void MapVirtualInterfaceMethod (MethodDefinition method)
 		{
-			foreach (MethodDefinition @base in GetBaseMethodsInInterfaceHierarchy (method))
-				AnnotateMethods (@base, method);
+			foreach (var baseInfo in GetBaseMethodsInInterfaceHierarchy (method))
+				AnnotateMethods (baseInfo.Method, method, baseInfo.MatchingInterfaceImplementation);
 		}
 
 		void MapOverrides (MethodDefinition method)
@@ -224,7 +227,27 @@ namespace Mono.Linker.Steps {
 				if (@override == null)
 					continue;
 
-				AnnotateMethods (@override, method);
+				InterfaceImplementation matchingInterfaceImplementation = null;
+				
+				if (@override.DeclaringType.IsInterface) {
+					foreach (var ifaceImpl in method.DeclaringType.Interfaces) {
+						var resolvedInterfaceType = ifaceImpl.InterfaceType.Resolve ();
+						if (resolvedInterfaceType == null) {
+							continue;
+						}
+
+						if (resolvedInterfaceType == @override.DeclaringType)
+						{
+							matchingInterfaceImplementation = ifaceImpl;
+							break;
+						}
+					}
+				}
+				
+				if(method.FullName.Contains("Mono.Linker"))
+					Console.WriteLine();
+
+				AnnotateMethods (@override, method, matchingInterfaceImplementation);
 			}
 		}
 
@@ -277,20 +300,20 @@ namespace Mono.Linker.Steps {
 			return null;
 		}
 
-		static IEnumerable<MethodDefinition> GetBaseMethodsInInterfaceHierarchy (MethodDefinition method)
+		static IEnumerable<AnnotationStore.OverrideInformation> GetBaseMethodsInInterfaceHierarchy (MethodDefinition method)
 		{
 			return GetBaseMethodsInInterfaceHierarchy (method.DeclaringType, method);
 		}
 
-		static IEnumerable<MethodDefinition> GetBaseMethodsInInterfaceHierarchy (TypeReference type, MethodDefinition method)
+		static IEnumerable<AnnotationStore.OverrideInformation> GetBaseMethodsInInterfaceHierarchy (TypeReference type, MethodDefinition method)
 		{
-			foreach (TypeReference @interface in type.GetInflatedInterfaces ()) {
-				MethodDefinition base_method = TryMatchMethod (@interface, method);
+			foreach (var interfaceInfo in type.GetInflatedInterfaces ()) {
+				MethodDefinition base_method = TryMatchMethod (interfaceInfo.Item1, method);
 				if (base_method != null)
-					yield return base_method;
+					yield return new AnnotationStore.OverrideInformation(base_method, interfaceInfo.Item2);
 
-				foreach (MethodDefinition @base in GetBaseMethodsInInterfaceHierarchy (@interface, method))
-					yield return @base;
+				foreach (var baseInfo in GetBaseMethodsInInterfaceHierarchy (interfaceInfo.Item1, method))
+					yield return baseInfo;
 			}
 		}
 

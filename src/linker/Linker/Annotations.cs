@@ -61,6 +61,12 @@ namespace Mono.Linker {
 		{
 			public MethodDefinition Method;
 			public InterfaceImplementation MatchingInterfaceImplementation;
+
+			public OverrideInformation(MethodDefinition method, InterfaceImplementation interfaceImplementation)
+			{
+				Method = method;
+				MatchingInterfaceImplementation = interfaceImplementation;
+			}
 		}
 
 		public AnnotationStore (LinkContext context) => this.context = context;
@@ -258,12 +264,7 @@ namespace Mono.Linker {
 				override_methods [@base] = methods;
 			}
 
-			methods.Add(new OverrideInformation
-			{
-				Method = @override,
-				MatchingInterfaceImplementation = matchingInterfaceImplementation
-			});
-			
+			methods.Add(new OverrideInformation(@override, matchingInterfaceImplementation));
 		}
 
 		public List<OverrideInformation> GetOverrides (MethodDefinition method)

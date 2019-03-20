@@ -1,4 +1,5 @@
-﻿using Mono.Cecil;
+﻿using System;
+using Mono.Cecil;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -40,7 +41,7 @@ namespace Mono.Linker
 			return type.Resolve ()?.BaseType;
 		}
 
-		public static IEnumerable<TypeReference> GetInflatedInterfaces (this TypeReference typeRef)
+		public static IEnumerable<Tuple<TypeReference, InterfaceImplementation>> GetInflatedInterfaces (this TypeReference typeRef)
 		{
 			var typeDef = typeRef.Resolve ();
 
@@ -50,10 +51,10 @@ namespace Mono.Linker
 			var genericInstance = typeRef as GenericInstanceType;
 			if (genericInstance != null) {
 				foreach (var interfaceImpl in typeDef.Interfaces)
-					yield return InflateGenericType (genericInstance, interfaceImpl.InterfaceType);
+					yield return new Tuple<TypeReference, InterfaceImplementation>(InflateGenericType (genericInstance, interfaceImpl.InterfaceType), interfaceImpl);
 			} else {
 				foreach (var interfaceImpl in typeDef.Interfaces)
-					yield return interfaceImpl.InterfaceType;
+					yield return  new Tuple<TypeReference, InterfaceImplementation>(interfaceImpl.InterfaceType, interfaceImpl);
 			}
 		}
 
