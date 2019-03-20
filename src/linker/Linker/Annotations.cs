@@ -28,7 +28,7 @@
 
 using System;
 using System.Collections.Generic;
-
+using System.Diagnostics;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
@@ -57,6 +57,7 @@ namespace Mono.Linker {
 		readonly HashSet<TypeDefinition> marked_types_with_cctor = new HashSet<TypeDefinition> ();
 		protected readonly HashSet<TypeDefinition> marked_instantiated = new HashSet<TypeDefinition> ();
 
+		[DebuggerDisplay("{Method}")]
 		public class OverrideInformation
 		{
 			public MethodDefinition Method;
