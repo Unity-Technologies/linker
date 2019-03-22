@@ -29,10 +29,6 @@
     <ClearInitLocals Condition=" '$(ClearInitLocals)' == '' ">false</ClearInitLocals>
   </PropertyGroup>
 
-  <!-- This depends on LinkDuringPublish, so it needs to be imported
-       after the property is set. -->
-  <Import Project="$(MSBuildThisFileDirectory)ILLink.CrossGen.targets" />
-
   <ItemGroup>
     <!-- LinkerRootDescriptors (the ItemGroup) is set to contain
          LinkerRootDescriptors (the Property), which allows adding
@@ -90,15 +86,15 @@
        ComputeFilesToPublish, but after all of its dependencies. -->
   <Target Name="ComputeLinkedFilesToPublish"
           BeforeTargets="ComputeFilesToPublish"
-          DependsOnTargets="_ComputeLinkedAssemblies;_FindNativeDeps"
+          DependsOnTargets="_ComputeLinkedAssemblies;_FindNativeDeps;_RemoveDuplicatesFrom_ResolvedCopyLocalPublishAssets"
           Condition=" '$(LinkDuringPublish)' == 'true' ">
     <!-- Rewrite ResolvedAssembliesToPublish, which is an input to
          ComputeFilesToPublish. -->
     <ItemGroup>
-      <ResolvedAssembliesToPublish Remove="@(_ManagedAssembliesToLink)" />
-      <ResolvedAssembliesToPublish Remove="@(_NativeResolvedDepsToPublish)" />
-      <ResolvedAssembliesToPublish Include="@(_NativeKeptDepsToPublish)" />
-      <ResolvedAssembliesToPublish Include="@(_LinkedResolvedAssemblies)" />
+      <_ResolvedCopyLocalPublishAssets Remove="@(_ManagedAssembliesToLink)" />
+      <_ResolvedCopyLocalPublishAssets Remove="@(_NativeResolvedDepsToPublish)" />
+      <_ResolvedCopyLocalPublishAssets Include="@(_NativeKeptDepsToPublish)" />
+      <_ResolvedCopyLocalPublishAssets Include="@(_LinkedResolvedAssemblies)" />
     </ItemGroup>
 
     <!-- Rewrite IntermediateAssembly, which is an input to
@@ -116,6 +112,19 @@
     </ItemGroup>
   </Target>
 
+  <!-- Work around duplicate items in
+       _ResolvedCopyLocalPublishAssets. See
+       https://github.com/dotnet/sdk/issues/3007. -->
+  <Target Name="_RemoveDuplicatesFrom_ResolvedCopyLocalPublishAssets">
+    <RemoveDuplicates Inputs="@(_ResolvedCopyLocalPublishAssets)">
+      <Output TaskParameter="Filtered" ItemName="_Unique_ResolvedCopyLocalPublishAssets" />
+    </RemoveDuplicates>
+    <ItemGroup>
+      <_ResolvedCopyLocalPublishAssets Remove="@(_ResolvedCopyLocalPublishAssets)" />
+      <_ResolvedCopyLocalPublishAssets Include="@(_Unique_ResolvedCopyLocalPublishAssets)" />
+    </ItemGroup>
+  </Target>
+
   <!-- The SDK has a target called ComputeRefAssembliesToPublish that
        runs after ComputeFilesToPublish and rewrites
        ResolvedFileToPublish to include any reference assemblies that
@@ -129,16 +138,17 @@
        restore it to its pre-link state before
        ComputeRefAssembliesToPublish. -->
   <Target Name="SaveResolvedAssembliesToPublish"
-          BeforeTargets="ComputeLinkedFilesToPublish">
+          BeforeTargets="ComputeLinkedFilesToPublish"
+          DependsOnTargets="_RemoveDuplicatesFrom_ResolvedCopyLocalPublishAssets">
     <ItemGroup>
-      <PreLinkResolvedAssembliesToPublish Include="@(ResolvedAssembliesToPublish)" />
+      <PreLinkResolvedAssembliesToPublish Include="@(_ResolvedCopyLocalPublishAssets)" />
     </ItemGroup>
   </Target>
   <Target Name="RestoreResolvedAssembliesToPublish"
           BeforeTargets="ComputeRefAssembliesToPublish">
     <ItemGroup>
-      <ResolvedAssembliesToPublish Remove="@(ResolvedAssembliesToPublish)" />
-      <ResolvedAssembliesToPublish Include="@(PreLinkResolvedAssembliesToPublish)" />
+      <_ResolvedCopyLocalPublishAssets Remove="@(_ResolvedCopyLocalPublishAssets)" />
+      <_ResolvedCopyLocalPublishAssets Include="@(PreLinkResolvedAssembliesToPublish)" />
     </ItemGroup>
   </Target>
 
@@ -147,13 +157,14 @@
        by setting $(ShowLinkerSizeComparison) to true. This runs after
        the ComputeFilesToPublish, so it is output even during
        incremental builds and takes into account all transformations
-       on the files to be published, including link and crossgen. -->
+       on the files to be published. -->
   <UsingTask TaskName="CompareAssemblySizes" AssemblyFile="$(LinkTaskDllPath)" />
+  <UsingTask TaskName="FilterByMetadata" AssemblyFile="$(LinkTaskDllPath)" />
   <Target Name="_CompareLinkedAssemblySizes"
           AfterTargets="ComputeFilesToPublish"
-          DependsOnTargets="_ComputeManagedAssembliesToLink;_ComputeLinkedAssemblies"
+          DependsOnTargets="_ComputeManagedAssembliesToLink;_ComputeLinkedAssemblies;_RemoveDuplicatesFrom_ResolvedCopyLocalPublishAssets"
           Condition=" '$(LinkDuringPublish)' == 'true' And '$(ShowLinkerSizeComparison)' == 'true' ">
-    <FilterByMetadata Items="@(ResolvedAssembliesToPublish);@(IntermediateAssembly)"
+    <FilterByMetadata Items="@(_ResolvedCopyLocalPublishAssets);@(IntermediateAssembly)"
                       MetadataName="Filename"
                       MetadataValues="@(_ManagedAssembliesToLink->'%(Filename)')">
       <Output TaskParameter="FilteredItems" ItemName="_FinalAssembliesTouchedByLinker" />
@@ -186,34 +197,6 @@
                             Condition=" '$(_DebugSymbolsProduced)' == 'true' " />
       <_LinkedDebugSymbols Include="@(__LinkedDebugSymbols)"
                            Condition="Exists('%(Identity)') And '$(_DebugSymbolsProduced)' == 'true' " />
-    </ItemGroup>
-
-  </Target>
-
-  <!-- Compute the default set of assemblies to crossgen after
-       linking. This will include any assemblies modified by the
-       linker that were crossgen'd before linking. -->
-  <Target Name="_ComputeLinkedAssembliesToCrossgen"
-          AfterTargets="_ComputeLinkedAssemblies"
-          Condition=" '$(CrossGenDuringPublish)' == 'true' ">
-    <FilterByMetadata Items="@(_ManagedResolvedAssembliesToPublish);@(IntermediateAssembly)"
-                      MetadataName="Filename"
-                      MetadataValues="@(_LinkedResolvedAssemblies->'%(Filename)');@(_LinkedIntermediateAssembly->'%(Filename)')">
-      <Output TaskParameter="FilteredItems" ItemName="_OriginalLinkedAssemblies" />
-    </FilterByMetadata>
-
-    <ComputeCrossgenedAssemblies Assemblies="@(_OriginalLinkedAssemblies)">
-      <Output TaskParameter="CrossgenedAssemblies" ItemName="_OriginalLinkedAssembliesThatWereCrossgened" />
-    </ComputeCrossgenedAssemblies>
-
-    <!-- Ideally, we would remember which assemblies were R2R and
-         which were fragile crossgen-ed, and do the same after
-         linking. Currently this makes no difference because
-         System.Private.CoreLib is the only fragile image, and it
-         can't be ready-to-run crossgen-ed. -->
-    <ItemGroup>
-      <_LinkedAssembliesToCrossgen Include="@(_OriginalLinkedAssembliesThatWereCrossgened->'$(IntermediateLinkDir)/%(Filename)%(Extension)')" />
-      <FilesToCrossgen Include="@(_LinkedAssembliesToCrossgen)" />
     </ItemGroup>
 
   </Target>
@@ -280,10 +263,10 @@
        dependencies, and these are prevented from being published. -->
   <UsingTask TaskName="FindNativeDeps" AssemblyFile="$(LinkTaskDllPath)" />
   <Target Name="_FindNativeDeps"
-          DependsOnTargets="_ComputeLinkedAssemblies"
+          DependsOnTargets="_ComputeLinkedAssemblies;_RemoveDuplicatesFrom_ResolvedCopyLocalPublishAssets"
           Condition=" '$(LinkerTrimNativeDeps)' == 'true' ">
     <ItemGroup>
-      <_NativeResolvedDepsToPublish Include="@(ResolvedAssembliesToPublish)" />
+      <_NativeResolvedDepsToPublish Include="@(_ResolvedCopyLocalPublishAssets)" />
       <_NativeResolvedDepsToPublish Remove="@(_ManagedResolvedAssembliesToPublish)" />
       <_NativeResolvedDepsToPublish Remove="@(_NativeResolvedDepsToPublish->WithMetadataValue('AssetType', 'resources'))" />
     </ItemGroup>
@@ -365,12 +348,13 @@
        because we use the list of managed assemblies to filter the
        publish output. -->
   <UsingTask TaskName="ComputeManagedAssemblies" AssemblyFile="$(LinkTaskDllPath)" />
-  <Target Name="_ComputeManagedResolvedAssembliesToPublish">
+  <Target Name="_ComputeManagedResolvedAssembliesToPublish"
+          DependsOnTargets="_RemoveDuplicatesFrom_ResolvedCopyLocalPublishAssets">
     <!-- TODO: Is there a better way to get the managed assemblies
          from ResolvedAssembliesToPublish? We may be able to check for
          AssetType="runtime" on managed assemblies - would that give
          the same set of assemblies? -->
-    <ComputeManagedAssemblies Assemblies="@(ResolvedAssembliesToPublish)">
+    <ComputeManagedAssemblies Assemblies="@(_ResolvedCopyLocalPublishAssets)">
       <Output TaskParameter="ManagedAssemblies" ItemName="_ManagedResolvedAssembliesToPublish" />
     </ComputeManagedAssemblies>
     <!-- For now, hard-code System.Private.CoreLib.ni, the only .ni
@@ -457,14 +441,11 @@
        "platform", currently Microsoft.NETCore.App. -->
   <UsingTask TaskName="GetRuntimeLibraries" AssemblyFile="$(LinkTaskDllPath)" />
   <Target Name="_ComputePlatformLibraries"
-          DependsOnTargets="_ComputeManagedAssembliesToLink">
-    <GetRuntimeLibraries Condition=" '$(SelfContained)' == 'true' "
-                         AssetsFilePath="$(ProjectAssetsFile)"
-                         TargetFramework="$(TargetFrameworkMoniker)"
-                         RuntimeIdentifier="$(RuntimeIdentifier)"
-                         PackageNames="$(MicrosoftNETPlatformLibrary)">
-      <Output TaskParameter="RuntimeLibraries" ItemName="PlatformLibraries" />
-    </GetRuntimeLibraries>
+          DependsOnTargets="_ComputeManagedAssembliesToLink;ResolveRuntimePackAssets">
+
+    <ItemGroup>
+      <PlatformLibraries Include="@(RuntimePackAssets)" />
+    </ItemGroup>
 
     <ItemGroup>
       <PlatformLibraries Include="@(_ManagedAssembliesToLink)" Condition=" '%(Filename)' == 'System.Private.CoreLib' " />
@@ -508,7 +489,7 @@
        file. -->
   <UsingTask TaskName="ComputeRemovedAssemblies" AssemblyFile="$(LinkTaskDllPath)" />
   <Target Name="_ExcludeRemovedFilesFromDepFileGeneration"
-          DependsOnTargets="_ComputeManagedResolvedAssembliesToPublish;_ComputeLinkedAssemblies;_FindNativeDeps;_HandlePublishFileConflicts"
+          DependsOnTargets="_ComputeManagedResolvedAssembliesToPublish;_ComputeLinkedAssemblies;_FindNativeDeps;_HandlePackageFileConflictsForPublish"
           BeforeTargets="GeneratePublishDependencyFile"
           Condition=" '$(LinkDuringPublish)' == 'true' ">
     <ComputeRemovedAssemblies InputAssemblies="@(_ManagedAssembliesToLink)"

@@ -117,6 +117,7 @@ namespace Mono.Linker.Steps {
 				return true;
 
 			switch (Annotations.GetAction (type.Module.Assembly)) {
+			case AssemblyAction.Save:
 			case AssemblyAction.Copy:
 			case AssemblyAction.CopyUsed:
 			case AssemblyAction.AddBypassNGen:
@@ -881,7 +882,10 @@ namespace Mono.Linker.Steps {
 			FieldDefinition field = ResolveFieldDefinition (reference);
 
 			if (field == null)
-				throw new ResolutionException (reference);
+			{
+				HandleUnresolvedField (reference);
+				return;
+			}
 
 			if (CheckProcessed (field))
 				return;
@@ -2086,6 +2090,13 @@ namespace Mono.Linker.Steps {
 		}
 
 		protected virtual void HandleUnresolvedMethod (MethodReference reference)
+		{
+			if (!_context.IgnoreUnresolved) {
+				throw new ResolutionException (reference);
+			}
+		}
+
+		protected virtual void HandleUnresolvedField (FieldReference reference)
 		{
 			if (!_context.IgnoreUnresolved) {
 				throw new ResolutionException (reference);

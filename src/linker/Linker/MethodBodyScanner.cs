@@ -47,6 +47,9 @@ namespace Mono.Linker {
 			foreach (VariableDefinition var in body.Variables)
 				AddIfResolved (types, var.VariableType);
 
+			foreach(var parameter in body.Method.Parameters)
+				AddIfResolved (types, parameter.ParameterType);
+
 			foreach (ExceptionHandler eh in body.ExceptionHandlers) {
 				if (eh.HandlerType == ExceptionHandlerType.Catch) {
 					AddIfResolved (types, eh.CatchType);
@@ -110,7 +113,7 @@ namespace Mono.Linker {
 
 		static void AddIfResolved (HashSet<TypeDefinition> set, TypeReference item)
 		{
-			var resolved = item.Resolve ();
+			var resolved = item?.Resolve ();
 			if (resolved == null)
 				return;
 			set.Add (resolved);

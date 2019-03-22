@@ -1,17 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;net46</TargetFrameworks>
-    <TargetFrameworks Condition=" '$(OS)' != 'Windows_NT' ">netcoreapp2.0</TargetFrameworks>
+    <!-- net46 build is disabled until cecil uses SDK-style projects. -->
+    <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
     <DefineConstants>$(DefineConstants);FEATURE_ILLINK</DefineConstants>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <AssemblyName>ILLink.CustomSteps</AssemblyName>
-    <OutputType>Library</OutputType>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <ProjectGuid>{275C1D10-168A-4AC4-8F3E-AD969F580B9C}</ProjectGuid>
   </PropertyGroup>
 
   <ItemGroup>

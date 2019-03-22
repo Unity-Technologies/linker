@@ -191,6 +191,8 @@
     <Compile Include="Inheritance.AbstractClasses\UnusedVirtualMethodRemoved.cs" />
     <Compile Include="Inheritance.AbstractClasses\UsedOverrideOfAbstractMethodIsKept.cs" />
     <Compile Include="Inheritance.AbstractClasses\UsedOverrideOfVirtualMethodIsKept.cs" />
+    <Compile Include="Inheritance.Complex\NoKeptCtor\OverrideOfAbstractAndInterfaceMethodWhenInterfaceRemoved.cs" />
+    <Compile Include="Inheritance.Complex\NoKeptCtor\OverrideOfAbstractAndInterfaceMethodWhenInterfaceRemoved2.cs" />
     <Compile Include="Inheritance.Interfaces\Dependencies\InterfaceTypeInOtherUsedOnlyByCopiedAssemblyExplicit_Copy.cs" />
     <Compile Include="Inheritance.Interfaces\Dependencies\InterfaceTypeInOtherUsedOnlyByCopiedAssemblyExplicit_Link.cs" />
     <Compile Include="Inheritance.Interfaces\Dependencies\InterfaceTypeInOtherUsedOnlyByCopiedAssembly_Copy.cs" />
@@ -211,6 +213,8 @@
     <Compile Include="Inheritance.Interfaces\OnReferenceType\InterfaceMarkOrderingDoesNotMatter3.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\InterfaceTypeInOtherUsedOnlyByCopiedAssembly.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\InterfaceTypeInOtherUsedOnlyByCopiedAssemblyExplicit.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\InterfaceTypeInOtherUsedOnlyBySavedAssembly.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\InterfaceTypeInOtherUsedOnlyBySavedAssemblyExplicit.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\InterfaceUsedOnlyAsConstraintIsKept.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\InterfaceWithInterfaceFromOtherAssemblyWhenExplicitMethodUsed.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\InterfaceTypeOnlyUsedHasInterfacesRemoved.cs" />
@@ -239,6 +243,9 @@
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\NestedInterfaces3.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\NestedInterfacesWithExplicit1.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\NestedInterfacesWithExplicitAndNormal1.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\ParameterAndLocal.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\ParameterOutAndLocal.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\ParameterRefAndLocal.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\ReturnValueDowncastedToInterface.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\GenericTypeWithConstraint.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtor\ComInterfaceTypeRemovedWhenOnlyUsedByClassWithOnlyStaticMethod.cs" />
@@ -414,7 +421,7 @@
     <Compile Include="TestFramework\CanCompileReferencesWithResourcesWithMcs.cs" />
     <Compile Include="TestFramework\CanCompileTestCaseWithDebugPdbs.cs" />
     <Compile Include="TestFramework\CanCompileTestCaseWithCsc.cs" />
-    <Compile Include="TestFramework\CanCompileTestCaseWithMsc.cs" />
+    <Compile Include="TestFramework\CanCompileTestCaseWithMcs.cs" />
     <Compile Include="TestFramework\CanSandboxDependenciesUsingType.cs" />
     <Compile Include="TestFramework\CanVerifyInterfacesOnTypesInAssembly.cs" />
     <Compile Include="TestFramework\Dependencies\CanCompileReferencesUsingTypes_LibSource1.cs" />
@@ -609,7 +616,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Attributes.StructLayout\" />
-    <Folder Include="Inheritance.Complex" />
     <Folder Include="Reflection\Dependencies\" />
     <Folder Include="BCLFeatures\" />
     <Folder Include="BCLFeatures\ETW\" />

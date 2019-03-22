@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(MSBuildThisFileDirectory)../../eng/Versions.props" Condition=" '$(ArcadeBuild)' != 'true' " />
   <PropertyGroup>
-    <VersionPrefix>0.1.5-preview</VersionPrefix>
-    <TargetFrameworks>netcoreapp2.0;net46</TargetFrameworks>
-    <TargetFrameworks Condition=" '$(OS)' != 'Windows_NT' ">netcoreapp2.0</TargetFrameworks>
+    <!-- net46 build is disabled until cecil uses SDK-style projects. -->
+    <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <BaseOutputPath>bin/</BaseOutputPath>
     <PackageOutputPath>$(BaseOutputPath)nupkgs</PackageOutputPath>
-
+    <IsPackable>true</IsPackable>
     <!-- IsTool true causes the build output to be placed in the
          package's tools folder. This allows projects to reference the
          tasks package without including the tasks dll in their
@@ -83,7 +83,6 @@
   <Target Name="BinPlacePackageDeps">
     <Copy SourceFiles="$(NuspecFileName)" DestinationFolder="$(BaseOutputPath)" />
     <Copy SourceFiles="ILLink.Tasks.targets" DestinationFolder="$(BaseOutputPath)" />
-    <Copy SourceFiles="ILLink.CrossGen.targets" DestinationFolder="$(BaseOutputPath)" />
   </Target>
 
   <Target Name="LayoutPackage">
@@ -99,21 +98,20 @@
   <ItemGroup>
     <Compile Include="AdapterLogger.cs" />
     <Compile Include="LinkTask.cs" />
+    <Compile Include="CheckEmbeddedRootDescriptor.cs" />
     <Compile Include="CompareSizes.cs" />
     <Compile Include="ComputeManagedAssemblies.cs" />
-    <Compile Include="ComputeCrossgenedAssemblies.cs" />
-    <Compile Include="GetRuntimeLibraries.cs" />
+    <Compile Include="ComputeRemovedAssemblies.cs" />
     <Compile Include="CreateRootDescriptorFile.cs" />
     <Compile Include="CreateRuntimeRootDescriptorFile.cs" />
     <Compile Include="FilterByMetadata.cs" />
     <Compile Include="FindDuplicatesByMetadata.cs" />
-    <Compile Include="Utils.cs" />
-    <Compile Include="Microsoft.NET.Build.Tasks/LockFileCache.cs" />
-    <Compile Include="Microsoft.NET.Build.Tasks/BuildErrorException.cs" />
     <Compile Include="FindNativeDeps.cs" />
-    <Compile Include="ComputeRemovedAssemblies.cs" />
-    <Compile Include="CheckEmbeddedRootDescriptor.cs" />
     <Compile Include="SetAssemblyActions.cs" />
+    <Compile Include="Utils.cs" />
+    <Content Include="Sdk\Sdk.props">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- TODO: Uncomment this once we can avoid hard-coding this in a
@@ -218,7 +216,6 @@
                       PrivateAssets="All" />
     <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.1.1012"
                       PrivateAssets="All" />
-    <PackageReference Include="NuGet.ProjectModel" Version="4.3.0-preview1-2500" />
     <PackageReference Include="System.Reflection.Metadata" Version="1.3.0"
                       PrivateAssets="All" />
   </ItemGroup>
