@@ -116,6 +116,11 @@ namespace Mono.Linker.Tests.TestCases
 			return NUnitCasesBySuiteName ("Inheritance.Complex");
 		}
 
+		public static IEnumerable<TestCaseData> ConstrainedTests ()
+		{
+			return NUnitCasesBySuiteName ("Constrained");
+		}
+
 		public static IEnumerable<TestCaseData> BCLFeaturesTests ()
 		{
 			return NUnitCasesBySuiteName ("BCLFeatures");

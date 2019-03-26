@@ -216,6 +216,15 @@ namespace Mono.Linker.Steps {
 
 		protected virtual void EnqueueMethod (MethodDefinition method)
 		{
+			if(method.FullName.Contains("Foo"))
+				Console.WriteLine();
+			
+			if(method.DeclaringType.FullName == "System.ValueType")
+				Console.WriteLine();
+			
+			if(method.DeclaringType.FullName == "System.Enum")
+				Console.WriteLine();
+			
 			_methods.Enqueue (method);
 		}
 
@@ -265,6 +274,9 @@ namespace Mono.Linker.Steps {
 
 			var isInstantiated = Annotations.IsInstantiated (method.DeclaringType);
 
+			if (IsOverrideOfConstrainedCallThatCanBeSkipped (method, @base))
+				return;
+
 			// We don't need to mark overrides until it is possible that the type could be instantiated
 			// Note : The base type is interface check should be removed once we have base type sweeping
 			if (@base.DeclaringType.IsInterface && !isInstantiated && !IsInterfaceImplementationMarked (method.DeclaringType, @base.DeclaringType)) {
@@ -286,6 +298,25 @@ namespace Mono.Linker.Steps {
 
 			MarkMethod (method);
 			ProcessVirtualMethod (method);
+		}
+
+		bool IsOverrideOfConstrainedCallThatCanBeSkipped (MethodDefinition method, MethodDefinition @base)
+		{
+			// TODO by Mike : Update to use OverrideInformation once that change lands
+			// Overrides of interface methods cannot use this optimization because the method may be needed
+			// in order to fulfill the interface
+			if (@base.DeclaringType.IsInterface)
+				return false;
+
+			if (!Annotations.HasUnconstrainedUsage (@base))
+			{
+				// If all of the uses of the base method have been constrained, then we do not need to mark the override here
+				// instead we will rely on the actual override that was needed to have been marked when each base + constrained
+				// usage was encountered
+				return true;
+			}
+
+			return false;
 		}
 
 		bool IsInterfaceImplementationMarked (TypeDefinition type, TypeDefinition interfaceType)
@@ -1420,6 +1451,8 @@ namespace Mono.Linker.Steps {
 
 		static bool IsSerializable (TypeDefinition td)
 		{
+			if (td.FullName == "System.ValueType" || td.FullName == "System.Enum")
+				return false;
 			return (td.Attributes & TypeAttributes.Serializable) != 0;
 		}
 
@@ -1662,6 +1695,43 @@ namespace Mono.Linker.Steps {
 			foreach (MethodDefinition method in methods)
 				MarkMethod (method);
 		}
+
+		protected virtual MethodDefinition MarkMethodFromBody(MethodReference reference, Instruction ins)
+		{
+			ProcessForUnconstrainedUsage(reference, ins);
+
+			
+			return MarkMethod(reference);
+		}
+
+		void ProcessForUnconstrainedUsage(MethodReference reference, Instruction ins)
+		{
+			var tmp = GetOriginalMethod (reference);
+			MethodDefinition method = ResolveMethodDefinition (tmp);
+
+			if (!method.IsVirtual)
+				return;
+
+			if (ins.OpCode.Code == Code.Callvirt && ins.Previous != null && ins.Previous.OpCode.Code == Code.Constrained)
+			{
+				var constrainedType = ((TypeReference) ins.Previous.Operand)?.Resolve();
+				// TODO by Mike : Just in case????
+				if (constrainedType == null)
+				{
+					Annotations.MarkUnconstrainedUsage(method);
+					return;
+				}
+
+				var overrides = Annotations.GetOverrides(method);
+				var matching = overrides.FirstOrDefault(m => m.DeclaringType == constrainedType);
+				MarkMethod(matching);
+			}
+			else
+			{
+				Annotations.MarkUnconstrainedUsage(method);
+			}
+		}
+		
 
 		protected virtual MethodDefinition MarkMethod (MethodReference reference)
 		{
@@ -2065,14 +2135,14 @@ namespace Mono.Linker.Steps {
 				MarkField ((FieldReference) instruction.Operand);
 				break;
 			case OperandType.InlineMethod:
-				MarkMethod ((MethodReference) instruction.Operand);
+				MarkMethodFromBody ((MethodReference) instruction.Operand, instruction);
 				break;
 			case OperandType.InlineTok:
 				object token = instruction.Operand;
 				if (token is TypeReference)
 					MarkType ((TypeReference) token);
 				else if (token is MethodReference)
-					MarkMethod ((MethodReference) token);
+					MarkMethodFromBody ((MethodReference) token, instruction);
 				else
 					MarkField ((FieldReference) token);
 				break;
