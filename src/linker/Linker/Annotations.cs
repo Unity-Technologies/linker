@@ -56,6 +56,7 @@ namespace Mono.Linker {
 		protected readonly HashSet<CustomAttribute> marked_attributes = new HashSet<CustomAttribute> ();
 		readonly HashSet<TypeDefinition> marked_types_with_cctor = new HashSet<TypeDefinition> ();
 		protected readonly HashSet<TypeDefinition> marked_instantiated = new HashSet<TypeDefinition> ();
+		protected readonly HashSet<MethodDefinition> unconstrained_usage = new HashSet<MethodDefinition> ();
 
 		public AnnotationStore (LinkContext context) => this.context = context;
 
@@ -145,12 +146,24 @@ namespace Mono.Linker {
 
 		public void MarkInstantiated (TypeDefinition type)
 		{
+			if(type.FullName == "System.ValueType")
+				Console.WriteLine();
 			marked_instantiated.Add (type);
 		}
 
 		public bool IsInstantiated (TypeDefinition type)
 		{
 			return marked_instantiated.Contains (type);
+		}
+		
+		public void MarkUnconstrainedUsage (MethodDefinition method)
+		{
+			unconstrained_usage.Add (method);
+		}
+
+		public bool HasUnconstrainedUsage (MethodDefinition method)
+		{
+			return unconstrained_usage.Contains (method);
 		}
 
 		public void Processed (IMetadataTokenProvider provider)

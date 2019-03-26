@@ -132,6 +132,12 @@ namespace Mono.Linker.Tests.TestCases
 			Run (testCase);
 		}
 
+		[TestCaseSource (typeof (TestDatabase), nameof (TestDatabase.ConstrainedTests))]
+		public void ConstrainedTests (TestCase testCase)
+		{
+			Run (testCase);
+		}
+
 		[TestCaseSource (typeof (TestDatabase), nameof (TestDatabase.BCLFeaturesTests))]
 		public void BCLFeaturesTests (TestCase testCase)
 		{
