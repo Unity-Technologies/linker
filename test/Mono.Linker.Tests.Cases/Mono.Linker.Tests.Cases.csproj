@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ILLinkBuild Condition=" $(Configuration.StartsWith('illink')) ">true</ILLinkBuild>
@@ -207,6 +207,35 @@
     <Compile Include="Inheritance.Interfaces\Dependencies\InterfaceTypeInOtherUsedOnlyByCopiedAssembly_Copy.cs" />
     <Compile Include="Inheritance.Interfaces\Dependencies\InterfaceTypeInOtherUsedOnlyByCopiedAssembly_Link.cs" />
     <Compile Include="Inheritance.Interfaces\Dependencies\InterfaceWithInterfaceFromOtherAssemblyWhenExplicitMethodUsed_Lib.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithGenericBaseMethod.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithGenericBaseMethodWithExplicit.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithGenericMethod.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithGenericMethod2.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithGenericMethod3.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethod.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethod2.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethod3.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodComplex.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodComplex2.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodManyBaseInterfaces.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodManyBases.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodManyBases2.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodManyBases3.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodManyVariations.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodNested.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodOnNoInstanceCtor.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithMethodOnNoInstanceCtor2.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithPropertyGetter.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithPropertySetter.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithPropertySetter2.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\InterfaceRemovedWhenMethodUsedDirectly.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\SimpleEvent.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithEvent.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\GenericInterfaceWithPropertyGetter2.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\SimpleMethod.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\SimpleMethodOnNoInstanceCtor.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\SimpleMethodOnNoInstanceCtor2.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\BaseProvidesInterfaceMember\SimpleProperty.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\ClassImplementingInterfaceMethodsNested.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\ClassImplementingInterfaceMethodsNested2.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\ClassImplemtingInterfaceMethodsThroughBaseClass2.cs" />
@@ -235,7 +264,7 @@
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoInstanceCtor\NoInstanceCtorAndTypePreserveMethodsWithInterfacesMarked.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoInstanceCtor\NoInstanceCtorAndTypePreserveNone.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\ArrayWithIndexAssignedToReturnValue.cs" />
-    <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\ArrayPassedAsParameter.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\LocalArrayPassedAsParameter.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\FieldDowncastedToInterface.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\GenericType.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\NoKeptCtorButInterfaceNeeded\GenericTypeWithConstraint2.cs" />
@@ -282,6 +311,7 @@
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedComInterfaceIsRemovedWhenComFeatureExcluded.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedExplicitInterfaceHasMethodPreservedViaXml.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedExplicitInterfaceIsRemoved.cs" />
+    <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedGenericInterfaceIsRemoved.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedInterfaceHasMethodPreservedViaXml.cs" />
     <Compile Include="Inheritance.Interfaces\OnReferenceType\UnusedInterfaceTypeIsRemoved.cs" />
     <Compile Include="Inheritance.Interfaces\OnValueType\NoKeptCtor\InterfaceCanBeRemovedFromClassWithOnlyStaticMethodUsed.cs" />
