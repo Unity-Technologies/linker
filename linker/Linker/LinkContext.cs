@@ -228,7 +228,7 @@ namespace Mono.Linker {
 		{
 			if (SeenFirstTime (assembly)) {
 				SafeReadSymbols (assembly);
-				SetAction (assembly);
+				SetDefaultAction (assembly);
 			}
 		}
 
@@ -287,8 +287,14 @@ namespace Mono.Linker {
 
 			return reference;
 		}
+		
+		public void SetAction(AssemblyDefinition assembly, AssemblyAction action)
+		{
+			RegisterAssembly (assembly);
+			Annotations.SetAction (assembly, action);
+		}
 
-		protected void SetAction (AssemblyDefinition assembly)
+		protected void SetDefaultAction (AssemblyDefinition assembly)
 		{
 			AssemblyAction action;
 
