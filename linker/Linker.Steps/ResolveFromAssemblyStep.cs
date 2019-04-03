@@ -81,14 +81,7 @@ namespace Mono.Linker.Steps
 
 		protected static void SetAction (LinkContext context, AssemblyDefinition assembly, AssemblyAction action)
 		{
-			TryReadSymbols (context, assembly);
-
-			context.Annotations.SetAction (assembly, action);
-		}
-
-		static void TryReadSymbols (LinkContext context, AssemblyDefinition assembly)
-		{
-			context.SafeReadSymbols (assembly);
+			context.SetAction (assembly, action);
 		}
 
 		protected virtual void ProcessLibrary (AssemblyDefinition assembly)
