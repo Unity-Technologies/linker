@@ -125,6 +125,16 @@ namespace Mono.Linker.Tests.TestCases
 		{
 			return NUnitCasesBySuiteName ("CommandLine");
 		}
+		
+		public static IEnumerable<TestCaseData> UnreachableBodyTests ()
+		{
+			return NUnitCasesBySuiteName ("UnreachableBody");
+		}
+
+		public static IEnumerable<TestCaseData> CodegenAnnotationTests ()
+		{
+			return NUnitCasesBySuiteName ("CodegenAnnotation");
+		}
 
 		public static TestCaseCollector CreateCollector ()
 		{
