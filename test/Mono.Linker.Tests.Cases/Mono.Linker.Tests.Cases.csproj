@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ILLinkBuild Condition=" $(Configuration.StartsWith('illink')) ">true</ILLinkBuild>
@@ -182,6 +182,10 @@
     <Compile Include="BCLFeatures\ETW\BaseRemovedEventSourceEmptyBody.cs" />
     <Compile Include="BCLFeatures\ETW\LocalsOfModifiedMethodAreRemoved.cs" />
     <Compile Include="BCLFeatures\ETW\StubbedMethodWithExceptionHandlers.cs" />
+    <Compile Include="CommandLine\Mvid\DefaultMvidBehavior.cs" />
+    <Compile Include="CommandLine\Mvid\DeterministicMvidWorks.cs" />
+    <Compile Include="CommandLine\Mvid\NewMvidWorks.cs" />
+    <Compile Include="CommandLine\Mvid\RetainMvid.cs" />
     <Compile Include="CommandLine\ResponseFilesWork.cs" />
     <Compile Include="CoreLink\CanIncludeI18nAssemblies.cs" />
     <Compile Include="CoreLink\DelegateAndMulticastDelegateKeepInstantiatedReqs.cs" />
