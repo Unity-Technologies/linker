@@ -1,57 +1,33 @@
-﻿<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <ILLinkBuild Condition=" $(Configuration.StartsWith('illink')) ">true</ILLinkBuild>
-    <ILLinkBuild Condition=" '$(ILLinkBuild)' == '' ">false</ILLinkBuild>
-  </PropertyGroup>
-  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition=" $(ILLinkBuild) " />
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>8.0.50727</ProductVersion>
-    <ProjectGuid>{400A1561-B6B6-482D-9E4C-3DDAEDE5BD07}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <AssemblyName>Mono.Linker.Tests</AssemblyName>
-    <StartupObject>
-    </StartupObject>
-    <TargetFramework Condition=" $(ILLinkBuild) ">netcoreapp3.0</TargetFramework>
-    <EnableDefaultCompileItems Condition=" $(ILLinkBuild) ">false</EnableDefaultCompileItems>
-    <TargetFrameworkVersion Condition=" ! $(ILLinkBuild) ">v4.7.1</TargetFrameworkVersion>
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup Condition=" $(Configuration.StartsWith('illink')) ">
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <ILLinkBuild>true</ILLinkBuild>
+    <DefineConstants>$(DefineConstants);ILLINK</DefineConstants>
+    <DefineConstants Condition=" '$(Configuration)' == 'illink_Debug' ">$(DefineConstants);DEBUG</DefineConstants>
     <!-- Simulate https://github.com/dotnet/sdk/pull/2073 until it ships. -->
     <DefineConstants Condition=" '$(TargetFramework)' == 'netcoreapp3.0' ">$(DefineConstants);NETCOREAPP</DefineConstants>
-    <DefineConstants Condition=" $(ILLinkBuild) ">$(DefineConstants);ILLINK</DefineConstants>
-    <DefineConstants Condition=" '$(Configuration)' == 'illink_Debug' ">$(DefineConstants);DEBUG</DefineConstants>
+
     <DefineConstants Condition=" '$(ArcadeBuild)' == 'true' ">$(DefineConstants);ARCADE</DefineConstants>
-    <IsTestProject Condition=" $(ILLinkBuild) ">true</IsTestProject>
     <!-- Arcade's custom test imports assume that we are using xunit. -->
     <DisableArcadeTestFramework Condition=" '$(ArcadeBuild)' == 'true' ">true</DisableArcadeTestFramework>
-    <RootNamespace>Mono.Linker.Tests</RootNamespace>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin/Debug/</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+
+  <PropertyGroup Condition=" ! $(Configuration.StartsWith('illink')) ">
+    <TargetFramework>net471</TargetFramework>
+    <ILLinkBuild>false</ILLinkBuild>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin/Release/</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" Condition=" ! $(ILLinkBuild) " />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+    <Folder Include="TestCasesRunner\" />
+    <Folder Include="Extensions\" />
+  </ItemGroup>
   <ItemGroup Condition=" ! $(ILLinkBuild) ">
     <Reference Include="System" />
     <Reference Include="System.Xml" />
@@ -72,11 +48,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\external\cecil\Mono.Cecil.Mdb.dll</HintPath>
     </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Properties\" />
-    <Folder Include="TestCasesRunner\" />
-    <Folder Include="Extensions\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\linker\Mono.Linker.csproj">
@@ -125,6 +96,20 @@
     <Compile Include="Tests\TypeNameParserTests.cs" />
     <Compile Include="Tests\ParseResponseFileLinesTests.cs" />
   </ItemGroup>
+
+  <ItemGroup Condition=" $(ILLinkBuild) ">
+    <PackageReference Include="System.CodeDom" Version="4.5.0" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="4.5.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="2.10.0" />
+    <PackageReference Include="nunit" Version="3.10.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
+    <!-- This reference is purely so that the linker can resolve this
+         dependency of mscorlib. It is not actually required to build
+         the tests. -->
+    <PackageReference Include="System.Threading.AccessControl" Version="4.5.0" />
+  </ItemGroup>
+
   <Target Name="PrepareTools"
           BeforeTargets="Build"
           Condition=" $(ILLinkBuild) ">
@@ -142,5 +127,4 @@
     <MSBuild Projects="$(IlasmProject)" Targets="CopyILAsmTool" Properties="BaseIntermediateOutputPath=$(IlasmDir);__BuildPhase=Copy" />
   </Target>
 
-  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition=" $(ILLinkBuild) " />
 </Project>

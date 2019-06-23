@@ -265,6 +265,12 @@ namespace Mono.Linker {
 						}
 					}
 
+					// Ensure this does not conflict with '-r' below.
+					if (token == "-reference") {
+						context.Resolver.AddReferenceAssembly (GetParam ());
+						continue;
+					}
+
 					switch (token [1]) {
 					case 'd':
 						DirectoryInfo info = new DirectoryInfo (GetParam ());
@@ -363,6 +369,7 @@ namespace Mono.Linker {
 					p.AddStepBefore (typeof (MarkStep), new RemoveFeaturesStep () {
 						FeatureCOM = excluded_features.Contains ("com"),
 						FeatureETW = excluded_features.Contains ("etw"),
+						FeatureSRE = excluded_features.Contains ("sre"),
 						FeatureGlobalization = excluded_features.Contains ("globalization")
 					});
 
@@ -476,7 +483,12 @@ namespace Mono.Linker {
 		AssemblyAction ParseAssemblyAction (string s)
 		{
 			var assemblyAction = (AssemblyAction)Enum.Parse(typeof(AssemblyAction), s, true);
-			_needAddBypassNGenStep = ((assemblyAction == AssemblyAction.AddBypassNGen) || (assemblyAction == AssemblyAction.AddBypassNGenUsed));
+			// The AddBypassNGenStep is necessary if any actions (default or per-assembly) are AddBypassNGen(Used).
+			// We enable this step as soon as we see such an action. Even if subsequent parameters change an action we have
+			// already seen, the step will only operate on assemblies with a final action AddBypassNGen(Used).
+			if ((assemblyAction == AssemblyAction.AddBypassNGen) || (assemblyAction == AssemblyAction.AddBypassNGenUsed)) {
+				_needAddBypassNGenStep = true;
+			}
 			return assemblyAction;
 		}
 
@@ -514,15 +526,15 @@ namespace Mono.Linker {
 			Console.WriteLine ("  -r                  Link from a list of assemblies using roots visible outside of the assembly");
 			Console.WriteLine ("  -x                  Link from XML descriptor");
 			Console.WriteLine ("  -d <path>           Specify additional directories to search in for references");
+			Console.WriteLine ("  -reference <file>   Specify additional assemblies to use as references");
 			Console.WriteLine ("  -b                  Update debug symbols for each linked module. Defaults to false");
 			Console.WriteLine ("  -v                  Keep members and types used by debugger. Defaults to false");
 			Console.WriteLine ("  -l <name>,<name>    List of i18n assemblies to copy to the output directory. Defaults to 'all'");
 			Console.WriteLine ("                        Valid names are 'none', 'all', 'cjk', 'mideast', 'other', 'rare', 'west'");
+			Console.WriteLine ("  -out <path>         Specify the output directory. Defaults to 'output'");
 			Console.WriteLine ("  --about             About the {0}", _linker);
 			Console.WriteLine ("  --verbose           Log messages indicating progress and warnings");
 			Console.WriteLine ("  --version           Print the version number of the {0}", _linker);
-			Console.WriteLine ("  --skip-unresolved   Ignore unresolved types, methods, and assemblies. Defaults to false");
-			Console.WriteLine ("  -out <path>         Specify the output directory. Defaults to 'output'");
 
 			Console.WriteLine ();
 			Console.WriteLine ("Actions");
@@ -553,6 +565,7 @@ namespace Mono.Linker {
 			Console.WriteLine ("  --ignore-descriptors      Skips reading embedded descriptors (short -z). Defaults to false");
 			Console.WriteLine ("  --keep-facades            Keep assemblies with type-forwarders (short -t). Defaults to false");
 			Console.WriteLine ("  --new-mvid                Generate a new guid for each linked assembly (short -g). Defaults to true");
+			Console.WriteLine ("  --skip-unresolved         Ignore unresolved types, methods, and assemblies. Defaults to false");			
 			Console.WriteLine ("  --strip-resources         Remove XML descriptor resources for linked assemblies. Defaults to true");
 			Console.WriteLine ("  --strip-security          Remove metadata and code related to Code Access Security. Defaults to true");
 			Console.WriteLine ("  --used-attrs-only         Any attribute is removed if the attribute type is not used. Defaults to false");
