@@ -11,6 +11,10 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <OutputPath>../../../build/</OutputPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="Assertions\BaseInAssemblyAttribute.cs" />
     <Compile Include="Assertions\ExpectBodyModifiedAttribute.cs" />
