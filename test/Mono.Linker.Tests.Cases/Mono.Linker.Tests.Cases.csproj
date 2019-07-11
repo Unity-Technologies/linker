@@ -18,10 +18,6 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputPath>../../../build/</OutputPath>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="Attributes.Debugger\DebuggerDisplayAttributeOnAssemblyUsingTarget.cs" />
     <Compile Include="Attributes.Debugger\DebuggerDisplayAttributeOnAssemblyUsingTargetTypeNameInOtherAssembly.cs" />

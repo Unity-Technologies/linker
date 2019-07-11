@@ -23,10 +23,6 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputPath>../../../build/</OutputPath>
-  </PropertyGroup>
-
   <ItemGroup>
     <Folder Include="Properties\" />
     <Folder Include="TestCasesRunner\" />
