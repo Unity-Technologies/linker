@@ -28,6 +28,10 @@
     <OutputPath>../../../build/</OutputPath>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <TargetFrameworkRootPath>$(SolutionDir)../il2cpp-deps/artifacts/Stevedore/reference-assemblies-netfx/builds</TargetFrameworkRootPath>
+  </PropertyGroup>
+
   <PropertyGroup Condition=" $(Configuration.EndsWith('Debug')) ">
     <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
     <Optimize Condition=" '$(Optimize)' == '' ">false</Optimize>

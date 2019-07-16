@@ -23,6 +23,10 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <TargetFrameworkRootPath>$(SolutionDir)../il2cpp-deps/artifacts/Stevedore/reference-assemblies-netfx/builds</TargetFrameworkRootPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <Folder Include="Properties\" />
     <Folder Include="TestCasesRunner\" />

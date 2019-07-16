@@ -11,6 +11,10 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <TargetFrameworkRootPath>$(SolutionDir)../il2cpp-deps/artifacts/Stevedore/reference-assemblies-netfx/builds</TargetFrameworkRootPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="Assertions\BaseInAssemblyAttribute.cs" />
     <Compile Include="Assertions\ExpectBodyModifiedAttribute.cs" />
