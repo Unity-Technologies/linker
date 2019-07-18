@@ -23,9 +23,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFrameworkRootPath>$(SolutionDir)../il2cpp-deps/artifacts/Stevedore/reference-assemblies-netfx/builds</TargetFrameworkRootPath>
-  </PropertyGroup>
+  <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
 
   <ItemGroup>
     <Folder Include="Properties\" />

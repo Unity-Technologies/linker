@@ -25,12 +25,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <OutputPath>../../../build/</OutputPath>
+    <OutputPath>$(SolutionDir)build/</OutputPath>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFrameworkRootPath>$(SolutionDir)../il2cpp-deps/artifacts/Stevedore/reference-assemblies-netfx/builds</TargetFrameworkRootPath>
-  </PropertyGroup>
+  <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
 
   <PropertyGroup Condition=" $(Configuration.EndsWith('Debug')) ">
     <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
