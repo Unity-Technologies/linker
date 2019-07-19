@@ -18,7 +18,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
-  <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
+  <Import Project="$(SolutionDir)/GlobalProjectProps/Tests-MonoLinker.props" />
 
   <ItemGroup>
     <Compile Include="Attributes.Debugger\DebuggerDisplayAttributeOnAssemblyUsingTarget.cs" />

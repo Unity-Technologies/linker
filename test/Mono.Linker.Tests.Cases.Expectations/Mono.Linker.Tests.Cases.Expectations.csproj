@@ -11,7 +11,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
-  <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
+  <Import Project="$(SolutionDir)/GlobalProjectProps/Tests-MonoLinker.props" />
 
   <ItemGroup>
     <Compile Include="Assertions\BaseInAssemblyAttribute.cs" />
