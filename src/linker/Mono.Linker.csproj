@@ -37,10 +37,22 @@
   <PropertyGroup Condition=" $(Configuration.EndsWith('Release')) ">
     <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\external\cecil\Mono.Cecil.csproj" />
-    <ProjectReference Include="..\..\external\cecil\symbols\mdb\Mono.Cecil.Mdb.csproj" />
-    <ProjectReference Include="..\..\external\cecil\symbols\pdb\Mono.Cecil.Pdb.csproj" />
+  <ItemGroup Condition=" ! $(Configuration.StartsWith('illink')) ">
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml" />
+    <Reference Include="Mono.Cecil">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\external\cecil\Mono.Cecil.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Cecil.Pdb">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\external\cecil\Mono.Cecil.Pdb.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Cecil.Mdb">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\external\cecil\Mono.Cecil.Mdb.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <!-- When publishing illink as a dependency of ILLink.Tasks, we want
