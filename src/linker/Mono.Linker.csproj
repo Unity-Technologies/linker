@@ -43,15 +43,15 @@
     <Reference Include="System.Xml" />
     <Reference Include="Mono.Cecil">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\external\cecil\Mono.Cecil.dll</HintPath>
+      <HintPath>..\..\..\..\external\cecil\netstandard\Mono.Cecil.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil.Pdb">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\external\cecil\Mono.Cecil.Pdb.dll</HintPath>
+      <HintPath>..\..\..\..\external\cecil\netstandard\Mono.Cecil.Pdb.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil.Mdb">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\external\cecil\Mono.Cecil.Mdb.dll</HintPath>
+      <HintPath>..\..\..\..\external\cecil\netstandard\Mono.Cecil.Mdb.dll</HintPath>
     </Reference>
   </ItemGroup>
 
