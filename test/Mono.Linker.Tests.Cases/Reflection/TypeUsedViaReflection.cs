@@ -11,7 +11,7 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 			TestEmptyString ();
 			TestFullString ();
 			TestGenericString ();
-			TestFullStringConst();
+			TestFullStringConst ();
 			TestTypeAsmName ();
 			TestType ();
 			TestPointer ();
@@ -21,19 +21,20 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 			TestMultiDimensionalArray ();
 			TestMultiDimensionalArrayFullString ();
 			TestMultiDimensionalArrayAsmName ();
+			TestDeeplyNested ();
 		}
 
 		[Kept]
 		public static void TestNull ()
 		{
-			string reflectionTypeKeptString = null;
+			const string reflectionTypeKeptString = null;
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
 		[Kept]
 		public static void TestEmptyString ()
 		{
-			string reflectionTypeKeptString = "";
+			const string reflectionTypeKeptString = "";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -43,7 +44,7 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestFullString ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Full, test, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Full, test, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -53,7 +54,7 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestGenericString ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Generic`1, test, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Generic`1, test, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -61,10 +62,10 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		public class FullConst { }
 
 		[Kept]
-		public static void TestFullStringConst()
+		public static void TestFullStringConst ()
 		{
 			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+FullConst, test, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
-			var typeKept = Type.GetType(reflectionTypeKeptString, false);
+			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
 		[Kept]
@@ -73,7 +74,7 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestTypeAsmName ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+TypeAsmName, test";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+TypeAsmName, test";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -83,7 +84,7 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestType ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+AType";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+AType";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -93,7 +94,7 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestPointer ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Pointer*";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Pointer*";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -103,7 +104,7 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestReference ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Reference&";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Reference&";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -113,28 +114,28 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestArray ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Array[]";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Array[]";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
 		[Kept]
-		public class ArrayOfArray{ }
+		public class ArrayOfArray { }
 
 		[Kept]
 		public static void TestArrayOfArray ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+ArrayOfArray[][]";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+ArrayOfArray[][]";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
 
 		[Kept]
-		public class MultiDimensionalArray{ }
+		public class MultiDimensionalArray { }
 
 		[Kept]
 		public static void TestMultiDimensionalArray ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+MultiDimensionalArray[,]";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+MultiDimensionalArray[,]";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -144,7 +145,7 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestMultiDimensionalArrayFullString ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+MultiDimensionalArrayFullString[,], test, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+MultiDimensionalArrayFullString[,], test, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
 		}
 
@@ -154,8 +155,24 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		[Kept]
 		public static void TestMultiDimensionalArrayAsmName ()
 		{
-			var reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+MultiDimensionalArrayAsmName[,], test";
+			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+MultiDimensionalArrayAsmName[,], test";
 			var typeKept = Type.GetType (reflectionTypeKeptString, false);
+		}
+
+		[Kept]
+		class Nested1 {
+			[Kept]
+			class N2 {
+				[Kept]
+				class N3 {
+				}
+			}
+		}
+
+		[Kept]
+		static void TestDeeplyNested ()
+		{
+			var typeKept = Type.GetType ("Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Nested1+N2+N3");
 		}
 	}
 }
