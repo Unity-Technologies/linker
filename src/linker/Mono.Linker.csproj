@@ -24,7 +24,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <OutputPath>$(SolutionDir)build/</OutputPath>
+    <OutputPath>$(SolutionDir)build/lib/</OutputPath>
   </PropertyGroup>
 
   <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
