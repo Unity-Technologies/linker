@@ -4,7 +4,9 @@ using Mono.Linker.Tests.Cases.Expectations.Metadata;
 
 namespace Mono.Linker.Tests.Cases.Reflection
 {
-	[SetupCompileArgument ("/r:System.Core.dll")]
+	// Explicitly use roslyn to try and get a compiler that supports defining `TestOnlyStatic2` without a setter
+	[SetupCSharpCompilerToUse ("csc")]
+	[Reference ("System.Core.dll")]
 	public class ExpressionPropertyString
 	{
 		public static void Main ()
