@@ -111,6 +111,12 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			}
 		}
 
+		public virtual void AddSubstitutions (string file)
+		{
+			Append ("--substitutions");
+			Append (file);
+		}
+
 		public string [] ToArgs ()
 		{
 			return _arguments.ToArray ();
@@ -155,8 +161,10 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			// our test cases that pollutes the results
 			IncludeBlacklist (options.IncludeBlacklistStep);
 
+#if !NETCOREAPP
 			if (!string.IsNullOrEmpty (options.Il8n))
 				AddIl8n (options.Il8n);
+#endif
 
 			if (!string.IsNullOrEmpty (options.KeepTypeForwarderOnlyAssemblies))
 				AddKeepTypeForwarderOnlyAssemblies (options.KeepTypeForwarderOnlyAssemblies);
@@ -170,6 +178,9 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			AddSkipUnresolved (options.SkipUnresolved);
 
 			AddStripResources (options.StripResources);
+
+			foreach (var substitutions in options.Substitutions)
+				AddSubstitutions (substitutions);
 
 			// Unity uses different argument format and needs to be able to translate to their format.  In order to make that easier
 			// we keep the information in flag + values format for as long as we can so that this information doesn't have to be parsed out of a single string

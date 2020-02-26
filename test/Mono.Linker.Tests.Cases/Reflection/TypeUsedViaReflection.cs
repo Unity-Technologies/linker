@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Reflection;
 using Mono.Linker.Tests.Cases.Expectations.Assertions;
 
 namespace Mono.Linker.Tests.Cases.Reflection {
@@ -22,9 +20,12 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 			TestMultiDimensionalArrayFullString ();
 			TestMultiDimensionalArrayAsmName ();
 			TestDeeplyNested ();
+			TestTypeOf ();
 		}
 
 		[Kept]
+		[UnrecognizedReflectionAccessPattern (
+			typeof (Type), nameof (Type.GetType), new Type [] { typeof (string), typeof (bool) })]
 		public static void TestNull ()
 		{
 			const string reflectionTypeKeptString = null;
@@ -32,6 +33,8 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		}
 
 		[Kept]
+		[UnrecognizedReflectionAccessPattern (
+			typeof (Type), nameof (Type.GetType), new Type [] { typeof (string), typeof (bool) })]
 		public static void TestEmptyString ()
 		{
 			const string reflectionTypeKeptString = "";
@@ -82,6 +85,9 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		public class AType { }
 
 		[Kept]
+		[RecognizedReflectionAccessPattern (
+			typeof (Type), nameof (Type.GetType), new Type[] { typeof (string), typeof (bool) },
+			typeof (AType), null, (Type []) null)]
 		public static void TestType ()
 		{
 			const string reflectionTypeKeptString = "Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+AType";
@@ -173,6 +179,15 @@ namespace Mono.Linker.Tests.Cases.Reflection {
 		static void TestDeeplyNested ()
 		{
 			var typeKept = Type.GetType ("Mono.Linker.Tests.Cases.Reflection.TypeUsedViaReflection+Nested1+N2+N3");
+		}
+
+		[Kept]
+		class TypeOfToKeep { }
+
+		[Kept]
+		static void TestTypeOf()
+		{
+			var typeKept = typeof(TypeOfToKeep);
 		}
 	}
 }

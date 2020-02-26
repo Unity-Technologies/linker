@@ -13,9 +13,9 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		readonly AssemblyDefinition originalAssembly, linkedAssembly;
 
 		HashSet<string> linkedMembers;
-		HashSet<string> verifiedGeneratedFields = new HashSet<string> ();
-		HashSet<string> verifiedEventMethods = new HashSet<string>();
-		HashSet<string> verifiedGeneratedTypes = new HashSet<string> ();
+		readonly HashSet<string> verifiedGeneratedFields = new HashSet<string> ();
+		readonly HashSet<string> verifiedEventMethods = new HashSet<string>();
+		readonly HashSet<string> verifiedGeneratedTypes = new HashSet<string> ();
 
 		public AssemblyChecker (AssemblyDefinition original, AssemblyDefinition linked)
 		{
@@ -43,8 +43,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 			var membersToAssert = originalAssembly.MainModule.Types;
 			foreach (var originalMember in membersToAssert) {
-				var td = originalMember as TypeDefinition;
-				if (td != null) {
+				if (originalMember is TypeDefinition td) {
 					if (td.Name == "<Module>") {
 						linkedMembers.Remove (td.Name);
 						continue;
@@ -98,6 +97,14 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			}
 
 			VerifyTypeDefinitionKept (original, linked);
+
+			if (original.HasAttribute (nameof (CreatedMemberAttribute))) {
+				foreach (var attr in original.CustomAttributes.Where (l => l.AttributeType.Name == nameof (CreatedMemberAttribute))) {
+					var newName = original.FullName + "::" + attr.ConstructorArguments [0].Value.ToString ();
+
+					Assert.AreEqual (1, linkedMembers.RemoveWhere (l => l.Contains (newName)), $"Newly created member '{newName}' was not found");
+				}
+			}
 		}
 
 		protected virtual void VerifyTypeDefinitionKept (TypeDefinition original, TypeDefinition linked)

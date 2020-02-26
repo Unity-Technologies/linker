@@ -57,10 +57,10 @@ namespace Mono.Linker.Steps {
 		static readonly string[] _accessorsAll = new string[] { "all" };
 		static readonly char[] _accessorsSep = new char[] { ';' };
 
-		XPathDocument _document;
-		string _xmlDocumentLocation;
-		string _resourceName;
-		AssemblyDefinition _resourceAssembly;
+		readonly XPathDocument _document;
+		readonly string _xmlDocumentLocation;
+		readonly string _resourceName;
+		readonly AssemblyDefinition _resourceAssembly;
 
 		public ResolveFromXmlStep (XPathDocument document, string xmlDocumentLocation = "<unspecified>")
 		{
@@ -74,11 +74,8 @@ namespace Mono.Linker.Steps {
 			if (string.IsNullOrEmpty (resourceName))
 				throw new ArgumentNullException (nameof (resourceName));
 
-			if (resourceAssembly == null)
-				throw new ArgumentNullException (nameof (resourceAssembly));
-
 			_resourceName = resourceName;
-			_resourceAssembly = resourceAssembly;
+			_resourceAssembly = resourceAssembly ?? throw new ArgumentNullException (nameof (resourceAssembly));
 		}
 
 		protected override void Process ()
@@ -324,8 +321,7 @@ namespace Mono.Linker.Steps {
 			if (string.IsNullOrEmpty (attribute))
 				return nav.HasChildren ? TypePreserve.Nothing : TypePreserve.All;
 
-			TypePreserve result;
-			if (Enum.TryParse (attribute, true, out result))
+			if (Enum.TryParse (attribute, true, out TypePreserve result))
 				return result;
 			return TypePreserve.Nothing;
 		}
@@ -462,18 +458,23 @@ namespace Mono.Linker.Steps {
 		{
 			if (type.HasMethods)
 				foreach (MethodDefinition meth in type.Methods)
-					if (signature == GetMethodSignature (meth))
+					if (signature == GetMethodSignature (meth, false))
 						return meth;
 
 			return null;
 		}
 
-		static string GetMethodSignature (MethodDefinition meth)
+		public static string GetMethodSignature (MethodDefinition meth, bool includeGenericParameters)
 		{
 			StringBuilder sb = new StringBuilder ();
 			sb.Append (meth.ReturnType.FullName);
 			sb.Append (" ");
 			sb.Append (meth.Name);
+			if (includeGenericParameters && meth.HasGenericParameters) {
+				sb.Append ("`");
+				sb.Append (meth.GenericParameters.Count);
+			}
+
 			sb.Append ("(");
 			if (meth.HasParameters) {
 				for (int i = 0; i < meth.Parameters.Count; i++) {
@@ -665,8 +666,7 @@ namespace Mono.Linker.Steps {
 			if (attribute == null || attribute.Length == 0)
 				return true;
 
-			bool result;
-			if (bool.TryParse (attribute, out result))
+			if (bool.TryParse (attribute, out bool result))
 				return result;
 			return false;
 		}
