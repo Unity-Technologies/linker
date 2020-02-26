@@ -1,33 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>Mono</RootNamespace>
     <Version>0.2.0.0</Version>
     <Configurations>Debug;Release</Configurations>
     <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(MonoBuild)' == ''">
-    <AssemblyName>illink</AssemblyName>
-    <Description>IL Linker</Description>
-    <DefineConstants>$(DefineConstants);FEATURE_ILLINK</DefineConstants>
-    <TargetFrameworks>netcoreapp3.0;net471</TargetFrameworks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(MonoBuild)' != ''">
+    <TargetFrameworks>net471</TargetFrameworks>
     <AssemblyName>monolinker</AssemblyName>
     <AssemblyTitle>Mono.Linker</AssemblyTitle>
     <Description>Mono CIL Linker</Description>
     <Copyright>(C) 2006, Jb Evain</Copyright>
-    <TargetFrameworks>net471</TargetFrameworks>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <OutputPath>$(SolutionDir)build/lib/</OutputPath>
   </PropertyGroup>
-
-  <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
 
   <PropertyGroup Condition=" $(Configuration.EndsWith('Debug')) ">
     <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
@@ -37,7 +22,7 @@
   <PropertyGroup Condition=" $(Configuration.EndsWith('Release')) ">
     <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
   </PropertyGroup>
-  <ItemGroup Condition=" ! $(Configuration.StartsWith('illink')) ">
+  <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml" />
@@ -54,18 +39,5 @@
       <HintPath>..\..\..\..\external\cecil\netstandard\Mono.Cecil.Mdb.dll</HintPath>
     </Reference>
   </ItemGroup>
-
-  <!-- When publishing illink as a dependency of ILLink.Tasks, we want
-       to include files needed to run it as an application in the
-       publish output. See https://github.com/dotnet/sdk/issues/1675. -->
-  <Target Name="AddRuntimeDependenciesToContent"
-          BeforeTargets="GetCopyToOutputDirectoryItems"
-          DependsOnTargets="GenerateBuildDependencyFile;GenerateBuildRuntimeConfigurationFiles"
-          Condition=" '$(TargetFrameworkIdentifier)' == '.NETCoreApp'">
-  <ItemGroup>
-      <ContentWithTargetPath Include="$(ProjectDepsFilePath)" CopyToOutputDirectory="PreserveNewest" TargetPath="$(ProjectDepsFileName)" />
-      <ContentWithTargetPath Include="$(ProjectRuntimeConfigFilePath)" CopyToOutputDirectory="PreserveNewest" TargetPath="$(ProjectRuntimeConfigFileName)" />
-  </ItemGroup>
-  </Target>
 
 </Project>
