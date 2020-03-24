@@ -6,7 +6,7 @@ using Mono.Linker.Tests.Cases.Expectations.Metadata;
 namespace Mono.Linker.Tests.Cases.Reflection
 {
 	[SetupCSharpCompilerToUse ("csc")]
-	public class ActivatorCreateInstance
+	public class ActivatorCreateInstanceAssortedUsages
 	{
 		[UnrecognizedReflectionAccessPattern(
 			typeof(Activator), nameof(Activator.CreateInstance) + "<T>", new Type[0])]

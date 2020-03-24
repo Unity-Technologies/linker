@@ -158,7 +158,7 @@ namespace Mono.Linker.Tests.TestCases
 
 		private TestCase CreateIndividualCase (Type testCaseType)
 		{
-			return TestDatabase.CreateCollector ().CreateIndividualCase (testCaseType);
+			return BaseTestDatabase.CreateCollector ().CreateIndividualCase (testCaseType);
 		}
 
 		protected LinkedTestCaseResult Run (TestCase testCase)
