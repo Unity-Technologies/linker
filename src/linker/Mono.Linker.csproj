@@ -22,6 +22,11 @@
   <PropertyGroup Condition=" $(Configuration.EndsWith('Release')) ">
     <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <Compile Remove="ref\**\*.cs" />
+  </ItemGroup>
+  
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
