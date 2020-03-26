@@ -3,7 +3,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>Mono</RootNamespace>
-    <Version>0.2.0.0</Version>
     <Configurations>Debug;Release</Configurations>
     <LangVersion>latest</LangVersion>
     <TargetFrameworks>net471</TargetFrameworks>
@@ -14,9 +13,10 @@
     <OutputPath>$(SolutionDir)build/lib/</OutputPath>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" $(Configuration.EndsWith('Debug')) ">
-    <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
-    <Optimize Condition=" '$(Optimize)' == '' ">false</Optimize>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
+    <DebugSymbols Condition="'$(DebugSymbols)' == ''">true</DebugSymbols>
+    <Optimize Condition="'$(Optimize)' == ''">false</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition=" $(Configuration.EndsWith('Release')) ">
