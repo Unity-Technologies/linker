@@ -16,7 +16,7 @@ namespace Mono.Linker.Tests.TestCasesRunner
 		public void RecordDependency (object source, object target, bool marked)
 		{
 			Dependencies.Add (new Dependency () {
-				Source = source.ToString (),
+				Source = source?.ToString (),
 				Target = target.ToString (),
 				Marked = marked
 			});
