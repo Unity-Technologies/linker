@@ -1,11 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <RootNamespace>Mono</RootNamespace>
     <Configurations>Debug;Release</Configurations>
     <LangVersion>latest</LangVersion>
-    <TargetFrameworks>net471</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <AssemblyName>monolinker</AssemblyName>
     <AssemblyTitle>Mono.Linker</AssemblyTitle>
     <Description>Mono CIL Linker</Description>
