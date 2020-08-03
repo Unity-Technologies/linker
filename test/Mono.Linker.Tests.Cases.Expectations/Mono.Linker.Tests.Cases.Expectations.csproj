@@ -3,6 +3,7 @@
   <PropertyGroup>
     <Configurations>Debug;Release</Configurations>
     <OutputType>Library</OutputType>
+    <LangVersion>latest</LangVersion>
     <TargetFramework>net471</TargetFramework>
   </PropertyGroup>
 </Project>

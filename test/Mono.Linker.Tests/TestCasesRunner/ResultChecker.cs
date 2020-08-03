@@ -1,5 +1,6 @@
-﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -9,7 +10,8 @@ using Mono.Linker.Tests.Cases.Expectations.Assertions;
 using Mono.Linker.Tests.Extensions;
 using NUnit.Framework;
 
-namespace Mono.Linker.Tests.TestCasesRunner {
+namespace Mono.Linker.Tests.TestCasesRunner
+{
 	public class ResultChecker
 	{
 		readonly BaseAssemblyResolver _originalsResolver;
@@ -19,13 +21,11 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		readonly PeVerifier _peVerifier;
 
 		public ResultChecker ()
-			: this(new TestCaseAssemblyResolver (), new TestCaseAssemblyResolver (), new PeVerifier (),
-					new ReaderParameters
-					{
+			: this (new TestCaseAssemblyResolver (), new TestCaseAssemblyResolver (), new PeVerifier (),
+					new ReaderParameters {
 						SymbolReaderProvider = new DefaultSymbolReaderProvider (false)
 					},
-					new ReaderParameters
-					{
+					new ReaderParameters {
 						SymbolReaderProvider = new DefaultSymbolReaderProvider (false)
 					})
 		{
@@ -43,28 +43,27 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 		public virtual void Check (LinkedTestCaseResult linkResult)
 		{
-			Assert.IsTrue (linkResult.OutputAssemblyPath.FileExists (), $"The linked output assembly was not found.  Expected at {linkResult.OutputAssemblyPath}");
-
 			InitializeResolvers (linkResult);
 
-			try
-			{
+			try {
 				var original = ResolveOriginalsAssembly (linkResult.ExpectationsAssemblyPath.FileNameWithoutExtension);
-				var linked = ResolveLinkedAssembly (linkResult.OutputAssemblyPath.FileNameWithoutExtension);
+				if (!HasAttribute (original, nameof (NoLinkedOutputAttribute))) {
+					Assert.IsTrue (linkResult.OutputAssemblyPath.FileExists (), $"The linked output assembly was not found.  Expected at {linkResult.OutputAssemblyPath}");
+					var linked = ResolveLinkedAssembly (linkResult.OutputAssemblyPath.FileNameWithoutExtension);
 
-				InitialChecking (linkResult, original, linked);
+					InitialChecking (linkResult, original, linked);
 
-				PerformOutputAssemblyChecks (original, linkResult.OutputAssemblyPath.Parent);
-				PerformOutputSymbolChecks (original, linkResult.OutputAssemblyPath.Parent);
+					PerformOutputAssemblyChecks (original, linkResult.OutputAssemblyPath.Parent);
+					PerformOutputSymbolChecks (original, linkResult.OutputAssemblyPath.Parent);
 
-				CreateAssemblyChecker (original, linked).Verify ();
+					if (!HasAttribute (original.MainModule.GetType (linkResult.TestCase.ReconstructedFullTypeName), nameof (SkipKeptItemsValidationAttribute))) {
+						CreateAssemblyChecker (original, linked).Verify ();
+					}
+				}
 
 				VerifyLinkingOfOtherAssemblies (original);
-
-				AdditionalChecking (linkResult, original, linked);
-			}
-			finally
-			{
+				AdditionalChecking (linkResult, original);
+			} finally {
 				_originalsResolver.Dispose ();
 				_linkedResolver.Dispose ();
 			}
@@ -84,7 +83,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		protected AssemblyDefinition ResolveLinkedAssembly (string assemblyName)
 		{
 			var cleanAssemblyName = assemblyName;
-			if (assemblyName.EndsWith(".exe") || assemblyName.EndsWith(".dll"))
+			if (assemblyName.EndsWith (".exe") || assemblyName.EndsWith (".dll"))
 				cleanAssemblyName = System.IO.Path.GetFileNameWithoutExtension (assemblyName);
 			return _linkedResolver.Resolve (new AssemblyNameReference (cleanAssemblyName, null), _linkedReaderParameters);
 		}
@@ -99,7 +98,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 		void PerformOutputAssemblyChecks (AssemblyDefinition original, NPath outputDirectory)
 		{
-			var assembliesToCheck = original.MainModule.Types.SelectMany (t => t.CustomAttributes).Where (attr => ExpectationsProvider.IsAssemblyAssertion(attr));
+			var assembliesToCheck = original.MainModule.Types.SelectMany (t => t.CustomAttributes).Where (attr => ExpectationsProvider.IsAssemblyAssertion (attr));
 
 			foreach (var assemblyAttr in assembliesToCheck) {
 				var name = (string) assemblyAttr.ConstructorArguments.First ().Value;
@@ -110,27 +109,27 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 				else if (assemblyAttr.AttributeType.Name == nameof (KeptAssemblyAttribute))
 					Assert.IsTrue (expectedPath.FileExists (), $"Expected the assembly {name} to exist in {outputDirectory}, but it did not");
 				else
-					throw new NotImplementedException($"Unknown assembly assertion of type {assemblyAttr.AttributeType}");
+					throw new NotImplementedException ($"Unknown assembly assertion of type {assemblyAttr.AttributeType}");
 			}
 		}
 
 		void PerformOutputSymbolChecks (AssemblyDefinition original, NPath outputDirectory)
 		{
 			var symbolFilesToCheck = original.MainModule.Types.SelectMany (t => t.CustomAttributes).Where (ExpectationsProvider.IsSymbolAssertion);
-			
+
 			foreach (var symbolAttr in symbolFilesToCheck) {
 				if (symbolAttr.AttributeType.Name == nameof (RemovedSymbolsAttribute))
 					VerifyRemovedSymbols (symbolAttr, outputDirectory);
 				else if (symbolAttr.AttributeType.Name == nameof (KeptSymbolsAttribute))
 					VerifyKeptSymbols (symbolAttr);
 				else
-					throw new NotImplementedException($"Unknown symbol file assertion of type {symbolAttr.AttributeType}");
+					throw new NotImplementedException ($"Unknown symbol file assertion of type {symbolAttr.AttributeType}");
 			}
 		}
 
 		void VerifyKeptSymbols (CustomAttribute symbolsAttribute)
 		{
-			var assemblyName = (string) symbolsAttribute.ConstructorArguments [0].Value;
+			var assemblyName = (string) symbolsAttribute.ConstructorArguments[0].Value;
 			var originalAssembly = ResolveOriginalsAssembly (assemblyName);
 			var linkedAssembly = ResolveLinkedAssembly (assemblyName);
 
@@ -143,9 +142,8 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 		void VerifyRemovedSymbols (CustomAttribute symbolsAttribute, NPath outputDirectory)
 		{
-			var assemblyName = (string) symbolsAttribute.ConstructorArguments [0].Value;
-			try
-			{
+			var assemblyName = (string) symbolsAttribute.ConstructorArguments[0].Value;
+			try {
 				var linkedAssembly = ResolveLinkedAssembly (assemblyName);
 
 				if (linkedAssembly.MainModule.SymbolReader != null)
@@ -157,16 +155,16 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 				var possibleSymbolFilePath = outputDirectory.Combine ($"{assemblyName}").ChangeExtension ("pdb");
 				if (possibleSymbolFilePath.Exists ())
 					Assert.Fail ($"Expected no symbols to be found for assembly `{assemblyName}`, however, a symbol file was found at {possibleSymbolFilePath}");
-				
+
 				possibleSymbolFilePath = outputDirectory.Combine ($"{assemblyName}.mdb");
 				if (possibleSymbolFilePath.Exists ())
 					Assert.Fail ($"Expected no symbols to be found for assembly `{assemblyName}`, however, a symbol file was found at {possibleSymbolFilePath}");
 			}
 		}
 
-		protected virtual void AdditionalChecking (LinkedTestCaseResult linkResult, AssemblyDefinition original, AssemblyDefinition linked)
+		protected virtual void AdditionalChecking (LinkedTestCaseResult linkResult, AssemblyDefinition original)
 		{
-			VerifyLoggedMessages(original, linkResult.Logger);
+			VerifyLoggedMessages (original, linkResult.Logger);
 			VerifyRecordedDependencies (original, linkResult.Customizations.DependencyRecorder);
 			VerifyRecordedReflectionPatterns (original, linkResult.Customizations.ReflectionPatternRecorder);
 		}
@@ -186,8 +184,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			try {
 				foreach (var assemblyName in checks.Keys) {
 					using (var linkedAssembly = ResolveLinkedAssembly (assemblyName)) {
-						foreach (var checkAttrInAssembly in checks [assemblyName])
-						{
+						foreach (var checkAttrInAssembly in checks[assemblyName]) {
 							var attributeTypeName = checkAttrInAssembly.AttributeType.Name;
 							if (attributeTypeName == nameof (KeptAllTypesAndMembersInAssemblyAttribute)) {
 								VerifyKeptAllTypesAndMembersInAssembly (linkedAssembly);
@@ -204,7 +201,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 								continue;
 							}
 
-							var expectedTypeName = checkAttrInAssembly.ConstructorArguments [1].Value.ToString ();
+							var expectedTypeName = checkAttrInAssembly.ConstructorArguments[1].Value.ToString ();
 							var linkedType = linkedAssembly.MainModule.GetType (expectedTypeName);
 
 							if (linkedType == null && linkedAssembly.MainModule.HasExportedTypes) {
@@ -255,6 +252,12 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 									Assert.Fail ($"Forwarder `{expectedTypeName}' should have been removed");
 
 								break;
+
+							case nameof (RemovedAssemblyReferenceAttribute):
+								Assert.False (linkedAssembly.MainModule.AssemblyReferences.Any (l => l.Name == expectedTypeName),
+									$"AssemblyRef '{expectedTypeName}' should have been removed");
+								break;
+
 							case nameof (KeptResourceInAssemblyAttribute):
 								VerifyKeptResourceInAssembly (checkAttrInAssembly);
 								break;
@@ -278,19 +281,19 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 		void VerifyKeptAttributeInAssembly (CustomAttribute inAssemblyAttribute, AssemblyDefinition linkedAssembly)
 		{
-			VerifyAttributeInAssembly(inAssemblyAttribute, linkedAssembly, VerifyCustomAttributeKept);
+			VerifyAttributeInAssembly (inAssemblyAttribute, linkedAssembly, VerifyCustomAttributeKept);
 		}
 
 		void VerifyRemovedAttributeInAssembly (CustomAttribute inAssemblyAttribute, AssemblyDefinition linkedAssembly)
 		{
 			VerifyAttributeInAssembly (inAssemblyAttribute, linkedAssembly, VerifyCustomAttributeRemoved);
 		}
-		
+
 		void VerifyAttributeInAssembly (CustomAttribute inAssemblyAttribute, AssemblyDefinition linkedAssembly, Action<ICustomAttributeProvider, string> assertExpectedAttribute)
 		{
-			var assemblyName = (string) inAssemblyAttribute.ConstructorArguments [0].Value;
+			var assemblyName = (string) inAssemblyAttribute.ConstructorArguments[0].Value;
 			string expectedAttributeTypeName;
-			var attributeTypeOrTypeName = inAssemblyAttribute.ConstructorArguments [1].Value;
+			var attributeTypeOrTypeName = inAssemblyAttribute.ConstructorArguments[1].Value;
 			if (attributeTypeOrTypeName is TypeReference typeReference) {
 				expectedAttributeTypeName = typeReference.FullName;
 			} else {
@@ -304,7 +307,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			}
 
 			// We are asserting on type or member
-			var typeOrTypeName = inAssemblyAttribute.ConstructorArguments [2].Value;
+			var typeOrTypeName = inAssemblyAttribute.ConstructorArguments[2].Value;
 			var originalType = GetOriginalTypeFromInAssemblyAttribute (inAssemblyAttribute.ConstructorArguments[0].Value.ToString (), typeOrTypeName);
 			if (originalType == null)
 				Assert.Fail ($"Invalid test assertion.  The original `{assemblyName}` does not contain a type `{typeOrTypeName}`");
@@ -319,7 +322,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			}
 
 			// we are asserting on a member
-			string memberName = (string) inAssemblyAttribute.ConstructorArguments [3].Value;
+			string memberName = (string) inAssemblyAttribute.ConstructorArguments[3].Value;
 
 			// We will find the matching type from the original assembly first that way we can confirm
 			// that the name defined in the attribute corresponds to a member that actually existed
@@ -328,7 +331,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 				var linkedField = linkedType.Fields.FirstOrDefault (m => m.Name == memberName);
 				if (linkedField == null)
 					Assert.Fail ($"Field `{memberName}` on Type `{originalType}` should have been kept");
-				
+
 				assertExpectedAttribute (linkedField, expectedAttributeTypeName);
 				return;
 			}
@@ -338,7 +341,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 				var linkedProperty = linkedType.Properties.FirstOrDefault (m => m.Name == memberName);
 				if (linkedProperty == null)
 					Assert.Fail ($"Property `{memberName}` on Type `{originalType}` should have been kept");
-				
+
 				assertExpectedAttribute (linkedProperty, expectedAttributeTypeName);
 				return;
 			}
@@ -362,7 +365,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			if (match == null)
 				Assert.Fail ($"Expected `{provider}` to have an attribute of type `{expectedAttributeTypeName}`");
 		}
-		
+
 		void VerifyCustomAttributeRemoved (ICustomAttributeProvider provider, string expectedAttributeTypeName)
 		{
 			var match = provider.CustomAttributes.FirstOrDefault (attr => attr.AttributeType.FullName == expectedAttributeTypeName);
@@ -374,8 +377,8 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		{
 			var originalType = GetOriginalTypeFromInAssemblyAttribute (inAssemblyAttribute);
 
-			var interfaceAssemblyName = inAssemblyAttribute.ConstructorArguments [2].Value.ToString ();
-			var interfaceType = inAssemblyAttribute.ConstructorArguments [3].Value;
+			var interfaceAssemblyName = inAssemblyAttribute.ConstructorArguments[2].Value.ToString ();
+			var interfaceType = inAssemblyAttribute.ConstructorArguments[3].Value;
 
 			var originalInterface = GetOriginalTypeFromInAssemblyAttribute (interfaceAssemblyName, interfaceType);
 			if (!originalType.HasInterfaces)
@@ -394,8 +397,8 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		{
 			var originalType = GetOriginalTypeFromInAssemblyAttribute (inAssemblyAttribute);
 
-			var interfaceAssemblyName = inAssemblyAttribute.ConstructorArguments [2].Value.ToString ();
-			var interfaceType = inAssemblyAttribute.ConstructorArguments [3].Value;
+			var interfaceAssemblyName = inAssemblyAttribute.ConstructorArguments[2].Value.ToString ();
+			var interfaceType = inAssemblyAttribute.ConstructorArguments[3].Value;
 
 			var originalInterface = GetOriginalTypeFromInAssemblyAttribute (interfaceAssemblyName, interfaceType);
 			if (!originalType.HasInterfaces)
@@ -413,9 +416,9 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		void VerifyKeptBaseOnTypeInAssembly (CustomAttribute inAssemblyAttribute, TypeDefinition linkedType)
 		{
 			var originalType = GetOriginalTypeFromInAssemblyAttribute (inAssemblyAttribute);
-			
-			var baseAssemblyName = inAssemblyAttribute.ConstructorArguments [2].Value.ToString ();
-			var baseType = inAssemblyAttribute.ConstructorArguments [3].Value;
+
+			var baseAssemblyName = inAssemblyAttribute.ConstructorArguments[2].Value.ToString ();
+			var baseType = inAssemblyAttribute.ConstructorArguments[3].Value;
 
 			var originalBase = GetOriginalTypeFromInAssemblyAttribute (baseAssemblyName, baseType);
 			if (originalType.BaseType.Resolve () != originalBase)
@@ -427,8 +430,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 		protected static InterfaceImplementation GetMatchingInterfaceImplementationOnType (TypeDefinition type, string expectedInterfaceTypeName)
 		{
-			return type.Interfaces.FirstOrDefault (impl =>
-			{
+			return type.Interfaces.FirstOrDefault (impl => {
 				var resolvedImpl = impl.InterfaceType.Resolve ();
 
 				if (resolvedImpl == null)
@@ -441,7 +443,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		void VerifyRemovedMemberInAssembly (CustomAttribute inAssemblyAttribute, TypeDefinition linkedType)
 		{
 			var originalType = GetOriginalTypeFromInAssemblyAttribute (inAssemblyAttribute);
-			foreach (var memberNameAttr in (CustomAttributeArgument[]) inAssemblyAttribute.ConstructorArguments [2].Value) {
+			foreach (var memberNameAttr in (CustomAttributeArgument[]) inAssemblyAttribute.ConstructorArguments[2].Value) {
 				string memberName = (string) memberNameAttr.Value;
 
 				// We will find the matching type from the original assembly first that way we can confirm
@@ -480,7 +482,7 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		void VerifyKeptMemberInAssembly (CustomAttribute inAssemblyAttribute, TypeDefinition linkedType)
 		{
 			var originalType = GetOriginalTypeFromInAssemblyAttribute (inAssemblyAttribute);
-			foreach (var memberNameAttr in (CustomAttributeArgument[]) inAssemblyAttribute.ConstructorArguments [2].Value) {
+			foreach (var memberNameAttr in (CustomAttributeArgument[]) inAssemblyAttribute.ConstructorArguments[2].Value) {
 				string memberName = (string) memberNameAttr.Value;
 
 				// We will find the matching type from the original assembly first that way we can confirm
@@ -529,9 +531,9 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 		protected virtual bool TryVerifyKeptMemberInAssemblyAsMethod (string memberName, TypeDefinition originalType, TypeDefinition linkedType)
 		{
-			var originalMethodMember = originalType.Methods.FirstOrDefault (m => m.GetSignature() == memberName);
+			var originalMethodMember = originalType.Methods.FirstOrDefault (m => m.GetSignature () == memberName);
 			if (originalMethodMember != null) {
-				var linkedMethod = linkedType.Methods.FirstOrDefault (m => m.GetSignature() == memberName);
+				var linkedMethod = linkedType.Methods.FirstOrDefault (m => m.GetSignature () == memberName);
 				if (linkedMethod == null)
 					Assert.Fail ($"Method `{memberName}` on Type `{originalType}` should have been kept");
 
@@ -543,23 +545,23 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 		void VerifyKeptReferencesInAssembly (CustomAttribute inAssemblyAttribute)
 		{
-			var assembly = ResolveLinkedAssembly (inAssemblyAttribute.ConstructorArguments [0].Value.ToString ());
-			var expectedReferenceNames = ((CustomAttributeArgument []) inAssemblyAttribute.ConstructorArguments [1].Value).Select (attr => (string) attr.Value);
+			var assembly = ResolveLinkedAssembly (inAssemblyAttribute.ConstructorArguments[0].Value.ToString ());
+			var expectedReferenceNames = ((CustomAttributeArgument[]) inAssemblyAttribute.ConstructorArguments[1].Value).Select (attr => (string) attr.Value);
 			Assert.That (assembly.MainModule.AssemblyReferences.Select (asm => asm.Name), Is.EquivalentTo (expectedReferenceNames));
 		}
 
 		void VerifyKeptResourceInAssembly (CustomAttribute inAssemblyAttribute)
 		{
-			var assembly = ResolveLinkedAssembly (inAssemblyAttribute.ConstructorArguments [0].Value.ToString ());
-			var resourceName = inAssemblyAttribute.ConstructorArguments [1].Value.ToString ();
+			var assembly = ResolveLinkedAssembly (inAssemblyAttribute.ConstructorArguments[0].Value.ToString ());
+			var resourceName = inAssemblyAttribute.ConstructorArguments[1].Value.ToString ();
 
 			Assert.That (assembly.MainModule.Resources.Select (r => r.Name), Has.Member (resourceName));
 		}
 
 		void VerifyRemovedResourceInAssembly (CustomAttribute inAssemblyAttribute)
 		{
-			var assembly = ResolveLinkedAssembly (inAssemblyAttribute.ConstructorArguments [0].Value.ToString ());
-			var resourceName = inAssemblyAttribute.ConstructorArguments [1].Value.ToString ();
+			var assembly = ResolveLinkedAssembly (inAssemblyAttribute.ConstructorArguments[0].Value.ToString ());
+			var resourceName = inAssemblyAttribute.ConstructorArguments[1].Value.ToString ();
 
 			Assert.That (assembly.MainModule.Resources.Select (r => r.Name), Has.No.Member (resourceName));
 		}
@@ -567,48 +569,58 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		void VerifyKeptAllTypesAndMembersInAssembly (AssemblyDefinition linked)
 		{
 			var original = ResolveOriginalsAssembly (linked.MainModule.Assembly.Name.Name);
-			
+
 			if (original == null)
 				Assert.Fail ($"Failed to resolve original assembly {linked.MainModule.Assembly.Name.Name}");
-			
+
 			var originalTypes = original.AllDefinedTypes ().ToDictionary (t => t.FullName);
 			var linkedTypes = linked.AllDefinedTypes ().ToDictionary (t => t.FullName);
 
 			var missingInLinked = originalTypes.Keys.Except (linkedTypes.Keys);
-			
+
 			Assert.That (missingInLinked, Is.Empty, $"Expected all types to exist in the linked assembly, but one or more were missing");
 
 			foreach (var originalKvp in originalTypes) {
-				var linkedType = linkedTypes [originalKvp.Key];
+				var linkedType = linkedTypes[originalKvp.Key];
 
 				var originalMembers = originalKvp.Value.AllMembers ().Select (m => m.FullName);
 				var linkedMembers = linkedType.AllMembers ().Select (m => m.FullName);
 
 				var missingMembersInLinked = originalMembers.Except (linkedMembers);
-				
+
 				Assert.That (missingMembersInLinked, Is.Empty, $"Expected all members of `{originalKvp.Key}`to exist in the linked assembly, but one or more were missing");
 			}
 		}
 
 		void VerifyLoggedMessages (AssemblyDefinition original, LinkerTestLogger logger)
 		{
-			string allMessages = string.Join (Environment.NewLine, logger.Messages.Select (mc => mc.Message));
-
-			foreach (var typeWithRemoveInAssembly in original.AllDefinedTypes ()) {
-				foreach (var attr in typeWithRemoveInAssembly.CustomAttributes) {
+			foreach (var testType in original.AllDefinedTypes ()) {
+				foreach (var attr in testType.CustomAttributes.Concat (testType.AllMembers ().SelectMany (m => m.CustomAttributes))) {
 					if (attr.AttributeType.Resolve ().Name == nameof (LogContainsAttribute)) {
-						var expectedMessagePattern = (string)attr.ConstructorArguments [0].Value;
-						Assert.That (
-							logger.Messages.Any (mc => Regex.IsMatch (mc.Message, expectedMessagePattern)),
-							$"Expected to find logged message matching `{expectedMessagePattern}`, but no such message was found.{Environment.NewLine}Logged messages:{Environment.NewLine}{allMessages}");
+						var expectedMessage = (string) attr.ConstructorArguments[0].Value;
+
+						List<LinkerTestLogger.MessageRecord> matchedMessages;
+						if ((bool) attr.ConstructorArguments[1].Value)
+							matchedMessages = logger.Messages.Where (mc => Regex.IsMatch (mc.Message, expectedMessage)).ToList ();
+						else
+							matchedMessages = logger.Messages.Where (mc => mc.Message.Contains (expectedMessage)).ToList (); ;
+						Assert.IsTrue (
+							matchedMessages.Count > 0,
+							$"Expected to find logged message matching `{expectedMessage}`, but no such message was found.{Environment.NewLine}Logged messages:{Environment.NewLine}{string.Join (Environment.NewLine, logger.Messages.Select (mc => mc.Message))}");
+
+						foreach (var matchedMessage in matchedMessages)
+							logger.Messages.Remove (matchedMessage);
 					}
 
 					if (attr.AttributeType.Resolve ().Name == nameof (LogDoesNotContainAttribute)) {
-						var unexpectedMessagePattern = (string)attr.ConstructorArguments [0].Value;
+						var unexpectedMessage = (string) attr.ConstructorArguments[0].Value;
 						foreach (var loggedMessage in logger.Messages) {
-							Assert.That (
-								!Regex.IsMatch (loggedMessage.Message, unexpectedMessagePattern),
-								$"Expected to not find logged message matching `{unexpectedMessagePattern}`, but found:{Environment.NewLine}{loggedMessage.Message}{Environment.NewLine}Logged messages:{Environment.NewLine}{allMessages}");
+							Assert.That (() => {
+								if ((bool) attr.ConstructorArguments[1].Value)
+									return !Regex.IsMatch (loggedMessage.Message, unexpectedMessage);
+								return !Regex.IsMatch (loggedMessage.Message, unexpectedMessage);
+							},
+							$"Expected to not find logged message matching `{unexpectedMessage}`, but found:{Environment.NewLine}{loggedMessage.Message}{Environment.NewLine}Logged messages:{Environment.NewLine}{string.Join (Environment.NewLine, logger.Messages.Select (mc => mc.Message))}");
 						}
 					}
 				}
@@ -620,25 +632,25 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			foreach (var typeWithRemoveInAssembly in original.AllDefinedTypes ()) {
 				foreach (var attr in typeWithRemoveInAssembly.CustomAttributes) {
 					if (attr.AttributeType.Resolve ().Name == nameof (DependencyRecordedAttribute)) {
-						var expectedSource = (string)attr.ConstructorArguments [0].Value;
-						var expectedTarget = (string)attr.ConstructorArguments [1].Value;
-						var expectedMarked = (string)attr.ConstructorArguments [2].Value;
+						var expectedSource = (string) attr.ConstructorArguments[0].Value;
+						var expectedTarget = (string) attr.ConstructorArguments[1].Value;
+						var expectedMarked = (string) attr.ConstructorArguments[2].Value;
 
 						if (!dependencyRecorder.Dependencies.Any (dependency => {
-								if (dependency.Source != expectedSource)
-									return false;
+							if (dependency.Source != expectedSource)
+								return false;
 
-								if (dependency.Target != expectedTarget)
-									return false;
+							if (dependency.Target != expectedTarget)
+								return false;
 
-								return expectedMarked == null || dependency.Marked.ToString () == expectedMarked;
-							})) {
+							return expectedMarked == null || dependency.Marked.ToString () == expectedMarked;
+						})) {
 
-							string targetCandidates = string.Join(Environment.NewLine, dependencyRecorder.Dependencies
-								.Where (d => d.Target.ToLowerInvariant().Contains (expectedTarget.ToLowerInvariant()))
+							string targetCandidates = string.Join (Environment.NewLine, dependencyRecorder.Dependencies
+								.Where (d => d.Target.ToLowerInvariant ().Contains (expectedTarget.ToLowerInvariant ()))
 								.Select (d => "\t" + DependencyToString (d)));
 							string sourceCandidates = string.Join (Environment.NewLine, dependencyRecorder.Dependencies
-								.Where (d => d.Source.ToLowerInvariant().Contains (expectedSource.ToLowerInvariant()))
+								.Where (d => d.Source.ToLowerInvariant ().Contains (expectedSource.ToLowerInvariant ()))
 								.Select (d => "\t" + DependencyToString (d)));
 
 							Assert.Fail (
@@ -651,26 +663,45 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 				}
 			}
 
-			static string DependencyToString(TestDependencyRecorder.Dependency dependency)
+			static string DependencyToString (TestDependencyRecorder.Dependency dependency)
 			{
 				return $"{dependency.Source} -> {dependency.Target} Marked: {dependency.Marked}";
 			}
 		}
 
+		static void RemoveFromList<T> (List<T> list, IEnumerable<T> itemsToRemove)
+		{
+			foreach (var item in itemsToRemove.ToList ()) {
+				list.Remove (item);
+			}
+		}
+
 		void VerifyRecordedReflectionPatterns (AssemblyDefinition original, TestReflectionPatternRecorder reflectionPatternRecorder)
 		{
-			foreach (var expectedSourceMethodDefinition in original.MainModule.AllDefinedTypes ().SelectMany (t => t.AllMethods ())) {
-				foreach (var attr in expectedSourceMethodDefinition.CustomAttributes) {
+			foreach (var expectedSourceMemberDefinition in original.MainModule.AllDefinedTypes ().SelectMany (t => t.AllMembers ().Append (t)).Distinct ()) {
+				bool foundAttributesToVerify = false;
+				foreach (var attr in expectedSourceMemberDefinition.CustomAttributes) {
 					if (attr.AttributeType.Resolve ().Name == nameof (RecognizedReflectionAccessPatternAttribute)) {
-						string expectedSourceMethod = GetFullMemberNameFromDefinition (expectedSourceMethodDefinition);
-						string expectedReflectionMethod = GetFullMemberNameFromReflectionAccessPatternAttribute (attr, constructorArgumentsOffset: 0);
+						foundAttributesToVerify = true;
+
+						// Special case for default .ctor - just trigger the overall verification on the method
+						// but don't verify any specific pattern.
+						if (attr.ConstructorArguments.Count == 0)
+							continue;
+
+						string expectedSourceMember = GetFullMemberNameFromDefinition (expectedSourceMemberDefinition);
+						string expectedReflectionMember = GetFullMemberNameFromReflectionAccessPatternAttribute (attr, constructorArgumentsOffset: 0);
 						string expectedAccessedItem = GetFullMemberNameFromReflectionAccessPatternAttribute (attr, constructorArgumentsOffset: 3);
 
 						if (!reflectionPatternRecorder.RecognizedPatterns.Any (pattern => {
-							if (GetFullMemberNameFromDefinition (pattern.SourceMethod) != expectedSourceMethod)
+							if (GetFullMemberNameFromDefinition (pattern.Source) != expectedSourceMember)
 								return false;
 
-							if (GetFullMemberNameFromDefinition (pattern.ReflectionMethod) != expectedReflectionMethod)
+							string actualAccessOperation = null;
+							if (pattern.SourceInstruction?.Operand is IMetadataTokenProvider sourceOperand)
+								actualAccessOperation = GetFullMemberNameFromDefinition (sourceOperand);
+
+							if (actualAccessOperation != expectedReflectionMember)
 								return false;
 
 							if (GetFullMemberNameFromDefinition (pattern.AccessedItem) != expectedAccessedItem)
@@ -679,29 +710,37 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 							reflectionPatternRecorder.RecognizedPatterns.Remove (pattern);
 							return true;
 						})) {
-							string sourceMethodCandidates = string.Join (Environment.NewLine, reflectionPatternRecorder.RecognizedPatterns
-								.Where (p => GetFullMemberNameFromDefinition (p.SourceMethod).ToLowerInvariant ().Contains (expectedSourceMethod.ToLowerInvariant ()))
+							string sourceMemberCandidates = string.Join (Environment.NewLine, reflectionPatternRecorder.RecognizedPatterns
+								.Where (p => GetFullMemberNameFromDefinition (p.Source)?.ToLowerInvariant ()?.Contains (expectedReflectionMember.ToLowerInvariant ()) == true)
 								.Select (p => "\t" + RecognizedReflectionAccessPatternToString (p)));
-							string reflectionMethodCandidates = string.Join (Environment.NewLine, reflectionPatternRecorder.RecognizedPatterns
-								.Where (p => GetFullMemberNameFromDefinition (p.ReflectionMethod).ToLowerInvariant ().Contains (expectedReflectionMethod.ToLowerInvariant ()))
+							string reflectionMemberCandidates = string.Join (Environment.NewLine, reflectionPatternRecorder.RecognizedPatterns
+								.Where (p => GetFullMemberNameFromDefinition (p.SourceInstruction?.Operand as IMetadataTokenProvider)?.ToLowerInvariant ()?.Contains (expectedReflectionMember.ToLowerInvariant ()) == true)
 								.Select (p => "\t" + RecognizedReflectionAccessPatternToString (p)));
 
 							Assert.Fail (
-								$"Expected to find recognized reflection access pattern '{expectedSourceMethod}: Call to {expectedReflectionMethod} accessed {expectedAccessedItem}'{Environment.NewLine}" +
-								$"Potential patterns matching the source method: {Environment.NewLine}{sourceMethodCandidates}{Environment.NewLine}" +
-								$"Potential patterns matching the reflection method: {Environment.NewLine}{reflectionMethodCandidates}{Environment.NewLine}" +
-								$"If there's no matches, try to specify just a part of the source method or reflection method name and rerun the test to get potential matches.");
+								$"Expected to find recognized reflection access pattern '{expectedSourceMember}: Usage of {expectedReflectionMember} accessed {expectedAccessedItem}'{Environment.NewLine}" +
+								$"Potential patterns matching the source member: {Environment.NewLine}{sourceMemberCandidates}{Environment.NewLine}" +
+								$"Potential patterns matching the reflection member: {Environment.NewLine}{reflectionMemberCandidates}{Environment.NewLine}" +
+								$"If there's no matches, try to specify just a part of the source member or reflection member name and rerun the test to get potential matches.");
 						}
-					} else if (attr.AttributeType.Resolve ().Name == nameof (UnrecognizedReflectionAccessPatternAttribute)) {
-						string expectedSourceMethod = GetFullMemberNameFromDefinition (expectedSourceMethodDefinition);
-						string expectedReflectionMethod = GetFullMemberNameFromReflectionAccessPatternAttribute (attr, constructorArgumentsOffset: 0);
-						string expectedMessage = (string)attr.ConstructorArguments [3].Value;
+					} else if (attr.AttributeType.Resolve ().Name == nameof (UnrecognizedReflectionAccessPatternAttribute) &&
+						attr.ConstructorArguments[0].Type.MetadataType != MetadataType.String) {
+						foundAttributesToVerify = true;
+						string expectedSourceMember = GetFullMemberNameFromDefinition (expectedSourceMemberDefinition);
+						string expectedReflectionMember = GetFullMemberNameFromReflectionAccessPatternAttribute (attr, constructorArgumentsOffset: 0);
+						string expectedMessage = (string) attr.ConstructorArguments[3].Value;
 
 						if (!reflectionPatternRecorder.UnrecognizedPatterns.Any (pattern => {
-							if (GetFullMemberNameFromDefinition (pattern.SourceMethod) != expectedSourceMethod)
+							if (GetFullMemberNameFromDefinition (pattern.Source) != expectedSourceMember)
 								return false;
 
-							if (GetFullMemberNameFromDefinition (pattern.ReflectionMethod) != expectedReflectionMethod)
+							string actualAccessOperation = null;
+							if (pattern.SourceInstruction?.Operand is IMetadataTokenProvider sourceOperand)
+								actualAccessOperation = GetFullMemberNameFromDefinition (sourceOperand);
+							else
+								actualAccessOperation = GetFullMemberNameFromDefinition (pattern.AccessedItem);
+
+							if (actualAccessOperation != expectedReflectionMember)
 								return false;
 
 							if (expectedMessage != null && pattern.Message != expectedMessage)
@@ -710,19 +749,40 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 							reflectionPatternRecorder.UnrecognizedPatterns.Remove (pattern);
 							return true;
 						})) {
-							string sourceMethodCandidates = string.Join (Environment.NewLine, reflectionPatternRecorder.UnrecognizedPatterns
-								.Where (p => GetFullMemberNameFromDefinition (p.SourceMethod).ToLowerInvariant ().Contains (expectedSourceMethod.ToLowerInvariant ()))
+							string sourceMemberCandidates = string.Join (Environment.NewLine, reflectionPatternRecorder.UnrecognizedPatterns
+								.Where (p => GetFullMemberNameFromDefinition (p.Source)?.ToLowerInvariant ()?.Contains (expectedSourceMember.ToLowerInvariant ()) == true)
 								.Select (p => "\t" + UnrecognizedReflectionAccessPatternToString (p)));
-							string reflectionMethodCandidates = string.Join (Environment.NewLine, reflectionPatternRecorder.UnrecognizedPatterns
-								.Where (p => GetFullMemberNameFromDefinition (p.ReflectionMethod).ToLowerInvariant ().Contains (expectedReflectionMethod.ToLowerInvariant ()))
+							string reflectionMemberCandidates = string.Join (Environment.NewLine, reflectionPatternRecorder.UnrecognizedPatterns
+								.Where (p => GetFullMemberNameFromDefinition (p.SourceInstruction != null ? p.SourceInstruction.Operand as IMetadataTokenProvider : p.AccessedItem)?.ToLowerInvariant ()?.Contains (expectedReflectionMember.ToLowerInvariant ()) == true)
 								.Select (p => "\t" + UnrecognizedReflectionAccessPatternToString (p)));
 
 							Assert.Fail (
-								$"Expected to find unrecognized reflection access pattern '{expectedSourceMethod}: Call to {expectedReflectionMethod} unrecognized {expectedMessage ?? string.Empty}'{Environment.NewLine}" +
-								$"Potential patterns matching the source method: {Environment.NewLine}{sourceMethodCandidates}{Environment.NewLine}" +
-								$"Potential patterns matching the reflection method: {Environment.NewLine}{reflectionMethodCandidates}{Environment.NewLine}" +
-								$"If there's no matches, try to specify just a part of the source method or reflection method name and rerun the test to get potential matches.");
+								$"Expected to find unrecognized reflection access pattern '{expectedSourceMember}: Usage of {expectedReflectionMember} unrecognized '{expectedMessage ?? string.Empty}''{Environment.NewLine}" +
+								$"Potential patterns matching the source member: {Environment.NewLine}{sourceMemberCandidates}{Environment.NewLine}" +
+								$"Potential patterns matching the reflection member: {Environment.NewLine}{reflectionMemberCandidates}{Environment.NewLine}" +
+								$"If there's no matches, try to specify just a part of the source member or reflection member name and rerun the test to get potential matches.");
 						}
+					}
+				}
+
+				if (foundAttributesToVerify) {
+					// Validate that there are no other reported unrecognized patterns on the member
+					string expectedSourceMember = GetFullMemberNameFromDefinition (expectedSourceMemberDefinition);
+					var unrecognizedPatternsForSourceMember = reflectionPatternRecorder.UnrecognizedPatterns.Where (pattern => {
+						if (GetFullMemberNameFromDefinition (pattern.Source) != expectedSourceMember)
+							return false;
+
+						return true;
+					});
+
+					if (unrecognizedPatternsForSourceMember.Any ()) {
+						string unrecognizedPatterns = string.Join (Environment.NewLine, unrecognizedPatternsForSourceMember
+							.Select (p => "\t" + UnrecognizedReflectionAccessPatternToString (p)));
+
+						Assert.Fail (
+							$"Member {expectedSourceMember} has either {nameof (RecognizedReflectionAccessPatternAttribute)} or {nameof (UnrecognizedReflectionAccessPatternAttribute)} attributes.{Environment.NewLine}" +
+							$"Some reported unrecognized patterns are not expected by the test (there's no matching attribute for them):{Environment.NewLine}" +
+							$"{unrecognizedPatterns}");
 					}
 				}
 			}
@@ -733,9 +793,9 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 						// By now all verified recorded patterns were removed from the test recorder lists, so validate
 						// that there are no remaining patterns for this type.
 						var recognizedPatternsForType = reflectionPatternRecorder.RecognizedPatterns
-							.Where (pattern => pattern.SourceMethod.DeclaringType.FullName == typeToVerify.FullName);
+							.Where (pattern => pattern.Source.DeclaringType.FullName == typeToVerify.FullName);
 						var unrecognizedPatternsForType = reflectionPatternRecorder.UnrecognizedPatterns
-							.Where (pattern => pattern.SourceMethod.DeclaringType.FullName == typeToVerify.FullName);
+							.Where (pattern => pattern.Source.DeclaringType.FullName == typeToVerify.FullName);
 
 						if (recognizedPatternsForType.Any () || unrecognizedPatternsForType.Any ()) {
 							string recognizedPatterns = string.Join (Environment.NewLine, recognizedPatternsForType
@@ -753,13 +813,20 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			}
 		}
 
-		static string GetFullMemberNameFromReflectionAccessPatternAttribute (CustomAttribute attr, int constructorArgumentsOffset) 
+		static string GetFullMemberNameFromReflectionAccessPatternAttribute (CustomAttribute attr, int constructorArgumentsOffset)
 		{
-			var type = attr.ConstructorArguments [constructorArgumentsOffset].Value;
-			var memberName = (string)attr.ConstructorArguments [constructorArgumentsOffset + 1].Value;
-			var parameterTypes = (CustomAttributeArgument[])attr.ConstructorArguments [constructorArgumentsOffset + 2].Value;
+			var type = attr.ConstructorArguments[constructorArgumentsOffset].Value;
+			var memberName = (string) attr.ConstructorArguments[constructorArgumentsOffset + 1].Value;
+			var parameterTypes = (CustomAttributeArgument[]) attr.ConstructorArguments[constructorArgumentsOffset + 2].Value;
 
 			string fullName = type.ToString ();
+			if (attr.AttributeType.Name == "UnrecognizedReflectionAccessPatternAttribute") {
+				var returnType = attr.ConstructorArguments[constructorArgumentsOffset + 4].Value;
+				if (returnType != null) {
+					fullName = fullName.Insert (0, returnType.ToString () + " ");
+				}
+			}
+
 			if (memberName == null) {
 				return fullName;
 			}
@@ -777,8 +844,29 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 			// Method which basically returns the same as member.ToString() but without the return type
 			// of a method (if it's a method).
 			// We need this as the GetFullMemberNameFromReflectionAccessPatternAttribute can't guess the return type
-			// as it would have to actually resolve the referenced method, which is very expensive and no necessary
+			// as it would have to actually resolve the referenced method, which is very expensive and unnecessary
 			// for the tests to work (the return types are redundant piece of information anyway).
+
+			if (member == null)
+				return null;
+			else if (member is TypeSpecification typeSpecification)
+				return typeSpecification.FullName;
+			else if (member is MethodSpecification methodSpecification)
+				member = methodSpecification.ElementMethod.Resolve ();
+			else if (member is GenericParameter genericParameter) {
+				var declaringType = genericParameter.DeclaringType?.Resolve ();
+				if (declaringType != null) {
+					return declaringType.FullName + "::" + genericParameter.FullName;
+				}
+
+				var declaringMethod = genericParameter.DeclaringMethod?.Resolve ();
+				if (declaringMethod != null) {
+					return GetFullMemberNameFromDefinition (declaringMethod) + "::" + genericParameter.FullName;
+				}
+
+				return genericParameter.FullName;
+			} else if (member is MemberReference memberReference)
+				member = memberReference.Resolve ();
 
 			if (member is IMemberDefinition memberDefinition) {
 				if (memberDefinition is TypeDefinition) {
@@ -793,6 +881,11 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 				}
 
 				return fullName;
+			} else if (member is ParameterDefinition param) {
+				string type = param.ParameterType.FullName;
+				return $"{type}::{param.Name}";
+			} else if (member is MethodReturnType returnType) {
+				return returnType.Method.ToString ();
 			}
 
 			throw new NotImplementedException ($"Getting the full member name has not been implemented for {member}");
@@ -800,18 +893,27 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 		static string RecognizedReflectionAccessPatternToString (TestReflectionPatternRecorder.ReflectionAccessPattern pattern)
 		{
-			return $"{GetFullMemberNameFromDefinition (pattern.SourceMethod)}: Call to {GetFullMemberNameFromDefinition (pattern.ReflectionMethod)} accessed {GetFullMemberNameFromDefinition (pattern.AccessedItem)}";
+			string operationDescription;
+			if (pattern.SourceInstruction?.Operand is IMetadataTokenProvider instructionOperand) {
+				operationDescription = "Usage of " + GetFullMemberNameFromDefinition (instructionOperand) + " accessed";
+			} else
+				operationDescription = "Accessed";
+			return $"{GetFullMemberNameFromDefinition (pattern.Source)}: {operationDescription} {GetFullMemberNameFromDefinition (pattern.AccessedItem)}";
 		}
 
 		static string UnrecognizedReflectionAccessPatternToString (TestReflectionPatternRecorder.ReflectionAccessPattern pattern)
 		{
-			return $"{GetFullMemberNameFromDefinition (pattern.SourceMethod)}: Call to {GetFullMemberNameFromDefinition (pattern.ReflectionMethod)} unrecognized '{pattern.Message}'";
+			string operationDescription;
+			if (pattern.SourceInstruction?.Operand is IMetadataTokenProvider instructionOperand) {
+				operationDescription = "Usage of " + GetFullMemberNameFromDefinition (instructionOperand) + " unrecognized";
+			} else
+				operationDescription = "Usage of " + GetFullMemberNameFromDefinition (pattern.AccessedItem) + " unrecognized";
+			return $"{GetFullMemberNameFromDefinition (pattern.Source)}: {operationDescription} '{pattern.Message}'";
 		}
-
 
 		protected TypeDefinition GetOriginalTypeFromInAssemblyAttribute (CustomAttribute inAssemblyAttribute)
 		{
-			return GetOriginalTypeFromInAssemblyAttribute (inAssemblyAttribute.ConstructorArguments [0].Value.ToString (), inAssemblyAttribute.ConstructorArguments [1].Value);
+			return GetOriginalTypeFromInAssemblyAttribute (inAssemblyAttribute.ConstructorArguments[0].Value.ToString (), inAssemblyAttribute.ConstructorArguments[1].Value);
 		}
 
 		protected TypeDefinition GetOriginalTypeFromInAssemblyAttribute (string assemblyName, object typeOrTypeName)
@@ -834,9 +936,9 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 
 			foreach (var typeWithRemoveInAssembly in original.AllDefinedTypes ()) {
 				foreach (var attr in typeWithRemoveInAssembly.CustomAttributes.Where (IsTypeInOtherAssemblyAssertion)) {
-					var assemblyName = (string) attr.ConstructorArguments [0].Value;
+					var assemblyName = (string) attr.ConstructorArguments[0].Value;
 					if (!checks.TryGetValue (assemblyName, out List<CustomAttribute> checksForAssembly))
-						checks [assemblyName] = checksForAssembly = new List<CustomAttribute> ();
+						checks[assemblyName] = checksForAssembly = new List<CustomAttribute> ();
 
 					checksForAssembly.Add (attr);
 				}
@@ -853,6 +955,18 @@ namespace Mono.Linker.Tests.TestCasesRunner {
 		bool IsTypeInOtherAssemblyAssertion (CustomAttribute attr)
 		{
 			return attr.AttributeType.Resolve ().DerivesFrom (nameof (BaseInAssemblyAttribute));
+		}
+
+		bool HasAttribute (ICustomAttributeProvider caProvider, string attributeName)
+		{
+			if (caProvider is AssemblyDefinition assembly && assembly.EntryPoint != null)
+				return assembly.EntryPoint.DeclaringType.CustomAttributes
+					.Any (attr => attr.AttributeType.Name == attributeName);
+
+			if (caProvider is TypeDefinition type)
+				return type.CustomAttributes.Any (attr => attr.AttributeType.Name == attributeName);
+
+			return false;
 		}
 	}
 }

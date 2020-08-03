@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="$(SolutionDir)/GlobalProjectProps/All.props" />
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
     <RootNamespace>Mono</RootNamespace>
     <Configurations>Debug;Release</Configurations>
     <LangVersion>latest</LangVersion>
@@ -39,6 +40,8 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\external\cecil\netstandard\Mono.Cecil.Mdb.dll</HintPath>
     </Reference>
+    <PackageReference Include="System.Text.Json" Version="4.7.1" />
+    <PackageReference Include="Microsoft.Bcl.HashCode" Version="1.1.0" />
   </ItemGroup>
 
 </Project>

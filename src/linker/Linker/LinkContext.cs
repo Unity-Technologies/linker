@@ -1,4 +1,4 @@
-﻿//
+//
 // LinkContext.cs
 //
 // Author:
@@ -33,15 +33,18 @@ using System.IO;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-namespace Mono.Linker {
+namespace Mono.Linker
+{
 
-	public class UnintializedContextFactory {
+	public class UnintializedContextFactory
+	{
 		virtual public AnnotationStore CreateAnnotationStore (LinkContext context) => new AnnotationStore (context);
 		virtual public MarkingHelpers CreateMarkingHelpers (LinkContext context) => new MarkingHelpers (context);
 		virtual public Tracer CreateTracer (LinkContext context) => new Tracer (context);
 	}
 
-	public class LinkContext : IDisposable {
+	public class LinkContext : IDisposable
+	{
 
 		readonly Pipeline _pipeline;
 		AssemblyAction _coreAction;
@@ -51,7 +54,6 @@ namespace Mono.Linker {
 		readonly Dictionary<string, string> _parameters;
 		bool _linkSymbols;
 		bool _keepTypeForwarderOnlyAssemblies;
-		bool _keepMembersForDebugger;
 		bool _ignoreUnresolved;
 
 		readonly AssemblyResolver _resolver;
@@ -61,9 +63,14 @@ namespace Mono.Linker {
 		ISymbolWriterProvider _symbolWriterProvider;
 
 		readonly AnnotationStore _annotations;
+		readonly CustomAttributeSource _customAttributes;
 
 		public Pipeline Pipeline {
 			get { return _pipeline; }
+		}
+
+		public CustomAttributeSource CustomAttributes {
+			get { return _customAttributes; }
 		}
 
 		public AnnotationStore Annotations {
@@ -92,20 +99,18 @@ namespace Mono.Linker {
 			set { _linkSymbols = value; }
 		}
 
-		public bool KeepTypeForwarderOnlyAssemblies
-		{
+		public bool KeepTypeForwarderOnlyAssemblies {
 			get { return _keepTypeForwarderOnlyAssemblies; }
 			set { _keepTypeForwarderOnlyAssemblies = value; }
 		}
 
-		public bool KeepMembersForDebugger
-		{
-			get { return _keepMembersForDebugger; }
-			set { _keepMembersForDebugger = value; }
-		}
+#if FEATURE_ILLINK
+		public readonly bool KeepMembersForDebugger = true;
+#else
+		public bool KeepMembersForDebugger { get; set; }
+#endif
 
-		public bool IgnoreUnresolved
-		{
+		public bool IgnoreUnresolved {
 			get { return _ignoreUnresolved; }
 			set { _ignoreUnresolved = value; }
 		}
@@ -116,13 +121,26 @@ namespace Mono.Linker {
 
 		public bool KeepDependencyAttributes { get; set; }
 
-		public bool StripResources { get; set; }
+		public bool IgnoreDescriptors { get; set; }
 
-		public List<string> Substitutions { get; private set; }
+		public bool IgnoreSubstitutions { get; set; }
+
+		public bool IgnoreLinkAttributes { get; set; }
+
+		public bool StripDescriptors { get; set; }
+
+		public bool StripSubstitutions { get; set; }
+
+		public bool StripLinkAttributes { get; set; }
+
+		public Dictionary<string, bool> FeatureSettings { get; private set; }
+
+		public List<string> AttributeDefinitions { get; private set; }
 
 		public List<PInvokeInfo> PInvokes { get; private set; }
 
 		public string PInvokesListFile;
+
 
 		public System.Collections.IDictionary Actions {
 			get { return _actions; }
@@ -154,12 +172,27 @@ namespace Mono.Linker {
 
 		public KnownMembers MarkedKnownMembers { get; private set; }
 
+		public WarningSuppressionWriter WarningSuppressionWriter { get; }
+
+		public HashSet<uint> NoWarn { get; set; }
+
+		public Dictionary<uint, bool> WarnAsError { get; set; }
+
+		public bool GeneralWarnAsError { get; set; }
+
+		public WarnVersion WarnVersion { get; set; }
+
+		public bool OutputWarningSuppressions { get; set; }
+
+		public UnconditionalSuppressMessageAttributeState Suppressions { get; set; }
+
 		public Tracer Tracer { get; private set; }
 
 		public IReflectionPatternRecorder ReflectionPatternRecorder { get; set; }
 
-		public string [] ExcludedFeatures { get; set; }
-
+#if !FEATURE_ILLINK
+		public string[] ExcludedFeatures { get; set; }
+#endif
 		public CodeOptimizationsSettings Optimizations { get; set; }
 
 		public bool AddReflectionAnnotations { get; set; }
@@ -172,8 +205,7 @@ namespace Mono.Linker {
 		}
 
 		public LinkContext (Pipeline pipeline, AssemblyResolver resolver)
-			: this(pipeline, resolver, new ReaderParameters
-			{
+			: this (pipeline, resolver, new ReaderParameters {
 				AssemblyResolver = resolver
 			}, new UnintializedContextFactory ())
 		{
@@ -185,9 +217,10 @@ namespace Mono.Linker {
 			_resolver = resolver;
 			_resolver.Context = this;
 			_actions = new Dictionary<string, AssemblyAction> ();
-			_parameters = new Dictionary<string, string> ();
+			_parameters = new Dictionary<string, string> (StringComparer.Ordinal);
 			_readerParameters = readerParameters;
-			
+			_customAttributes = new CustomAttributeSource ();
+
 			SymbolReaderProvider = new DefaultSymbolReaderProvider (false);
 
 			if (factory == null)
@@ -198,8 +231,16 @@ namespace Mono.Linker {
 			Tracer = factory.CreateTracer (this);
 			ReflectionPatternRecorder = new LoggingReflectionPatternRecorder (this);
 			MarkedKnownMembers = new KnownMembers ();
-			StripResources = true;
+			StripDescriptors = true;
+			StripSubstitutions = true;
+			StripLinkAttributes = true;
 			PInvokes = new List<PInvokeInfo> ();
+			Suppressions = new UnconditionalSuppressMessageAttributeState (this);
+			WarningSuppressionWriter = new WarningSuppressionWriter (this);
+			NoWarn = new HashSet<uint> ();
+			GeneralWarnAsError = false;
+			WarnAsError = new Dictionary<uint, bool> ();
+			WarnVersion = WarnVersion.Latest;
 
 			// See https://github.com/mono/linker/issues/612
 			const CodeOptimizations defaultOptimizations =
@@ -211,17 +252,28 @@ namespace Mono.Linker {
 			Optimizations = new CodeOptimizationsSettings (defaultOptimizations);
 		}
 
-		public void AddSubstitutionFile (string file)
+		public void SetFeatureValue (string feature, bool value)
 		{
-			if (Substitutions == null) {
-				Substitutions = new List<string> { file };
+			Debug.Assert (!String.IsNullOrEmpty (feature));
+			if (FeatureSettings == null) {
+				FeatureSettings = new Dictionary<string, bool> { { feature, value } };
 				return;
 			}
 
-			if (Substitutions.Contains (file))
+			FeatureSettings[feature] = value;
+		}
+
+		public void AddAttributeDefinitionFile (string file)
+		{
+			if (AttributeDefinitions == null) {
+				AttributeDefinitions = new List<string> { file };
+				return;
+			}
+
+			if (AttributeDefinitions.Contains (file))
 				return;
 
-			Substitutions.Add (file);
+			AttributeDefinitions.Add (file);
 		}
 
 		public TypeDefinition GetType (string fullName)
@@ -248,8 +300,7 @@ namespace Mono.Linker {
 		{
 			if (File.Exists (name)) {
 				try {
-					AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly (name, _readerParameters);
-					return _resolver.CacheAssembly (assembly);
+					return _resolver.ResolveFromPath (name, _readerParameters);
 				} catch (Exception e) {
 					throw new AssemblyResolutionException (new AssemblyNameReference (name, new Version ()), e);
 				}
@@ -268,8 +319,7 @@ namespace Mono.Linker {
 					RegisterAssembly (assembly);
 
 				return assembly;
-			}
-			catch (Exception e) {
+			} catch (Exception e) when (!(e is AssemblyResolutionException)) {
 				throw new AssemblyResolutionException (reference, e);
 			}
 		}
@@ -298,7 +348,7 @@ namespace Mono.Linker {
 			try {
 				var symbolReader = _symbolReaderProvider.GetSymbolReader (
 					assembly.MainModule,
-					assembly.MainModule.FileName);
+					_resolver.GetAssemblyFileName (assembly));
 
 				if (symbolReader == null)
 					return;
@@ -320,10 +370,15 @@ namespace Mono.Linker {
 			List<AssemblyDefinition> references = new List<AssemblyDefinition> ();
 			if (assembly == null)
 				return references;
+
 			foreach (AssemblyNameReference reference in assembly.MainModule.AssemblyReferences) {
-				AssemblyDefinition definition = Resolve (reference);
-				if (definition != null)
-					references.Add (definition);
+				try {
+					AssemblyDefinition definition = Resolve (reference);
+					if (definition != null)
+						references.Add (definition);
+				} catch (Exception e) {
+					throw new LinkerFatalErrorException (MessageContainer.CreateErrorMessage ($"Assembly '{assembly.FullName}' reference '{reference.FullName}' could not be resolved", 1009), e);
+				}
 			}
 			return references;
 		}
@@ -339,7 +394,7 @@ namespace Mono.Linker {
 
 			return reference;
 		}
-		
+
 		public void SetAction (AssemblyDefinition assembly, AssemblyAction defaultAction)
 		{
 			RegisterAssembly (assembly);
@@ -370,7 +425,7 @@ namespace Mono.Linker {
 			case "mscorlib":
 			case "Accessibility":
 			case "Mono.Security":
-				// WPF
+			// WPF
 			case "PresentationFramework":
 			case "PresentationCore":
 			case "WindowsBase":
@@ -379,35 +434,42 @@ namespace Mono.Linker {
 			case "PresentationUI":
 			case "ReachFramework":
 			case "netstandard":
-					return true;
+				return true;
 			default:
 				return name.Name.StartsWith ("System")
 					|| name.Name.StartsWith ("Microsoft");
 			}
 		}
 
-		public virtual AssemblyDefinition [] GetAssemblies ()
+		public virtual AssemblyDefinition[] GetAssemblies ()
 		{
 			var cache = _resolver.AssemblyCache;
-			AssemblyDefinition [] asms = new AssemblyDefinition [cache.Count];
+			AssemblyDefinition[] asms = new AssemblyDefinition[cache.Count];
 			cache.Values.CopyTo (asms, 0);
 			return asms;
 		}
 
-		public void SetParameter (string key, string value)
+		public AssemblyDefinition GetLoadedAssembly (string name)
 		{
-			_parameters [key] = value;
+			if (_resolver.AssemblyCache.TryGetValue (name, out var ad))
+				return ad;
+
+			return null;
 		}
 
-		public bool HasParameter (string key)
+		public void SetCustomData (string key, string value)
+		{
+			_parameters[key] = value;
+		}
+
+		public bool HasCustomData (string key)
 		{
 			return _parameters.ContainsKey (key);
 		}
 
-		public string GetParameter (string key)
+		public bool TryGetCustomData (string key, out string value)
 		{
-			_parameters.TryGetValue (key, out string val);
-			return val;
+			return _parameters.TryGetValue (key, out value);
 		}
 
 		public void Dispose ()
@@ -415,10 +477,12 @@ namespace Mono.Linker {
 			_resolver.Dispose ();
 		}
 
+#if !FEATURE_ILLINK
 		public bool IsFeatureExcluded (string featureName)
 		{
 			return ExcludedFeatures != null && Array.IndexOf (ExcludedFeatures, featureName) >= 0;
 		}
+#endif
 
 		public bool IsOptimizationEnabled (CodeOptimizations optimization, MemberReference context)
 		{
@@ -430,15 +494,137 @@ namespace Mono.Linker {
 			return Optimizations.IsEnabled (optimization, context);
 		}
 
-		public void LogMessage (string message)
+		public void LogMessage (MessageContainer message)
 		{
-			LogMessage (MessageImportance.Normal, message);
+			if (!LogMessages || message == MessageContainer.Empty)
+				return;
+
+			if (message.Category == MessageCategory.Warning &&
+				NoWarn.Contains ((uint) message.Code)) {
+				// This warning was turned off by --nowarn.
+				return;
+			}
+
+			// Note: message.Version is nullable. The comparison is false if it is null.
+			// Unversioned warnings are not controlled by WarnVersion.
+			// Error messages are guaranteed to only have a version if they were created for a warning due to warnaserror.
+			if ((message.Category == MessageCategory.Warning || message.Category == MessageCategory.Error) &&
+				message.Version > WarnVersion) {
+				// This warning was turned off by --warn.
+				return;
+			}
+
+			if (OutputWarningSuppressions && message.Category == MessageCategory.Warning && message.Origin?.MemberDefinition != null)
+				WarningSuppressionWriter.AddWarning (message.Code.Value, message.Origin?.MemberDefinition);
+
+			Logger?.LogMessage (message);
 		}
 
-		public void LogMessage (MessageImportance importance, string message)
+		public void LogMessage (string message)
 		{
-			if (LogMessages && Logger != null)
-				Logger.LogMessage (importance, "{0}", message);
+			if (!LogMessages)
+				return;
+
+			LogMessage (MessageContainer.CreateInfoMessage (message));
+		}
+
+		public void LogDiagnostic (string message)
+		{
+			if (!LogMessages)
+				return;
+
+			LogMessage (MessageContainer.CreateDiagnosticMessage (message));
+		}
+
+
+		/// <summary>
+		/// Display a warning message to the end user.
+		/// This API is used for warnings defined in the linker, not by custom steps. Warning
+		/// versions are inferred from the code, and every warning that we define is versioned.
+		/// </summary>
+		/// <param name="text">Humanly readable message describing the warning</param>
+		/// <param name="code">Unique warning ID. Please see https://github.com/mono/linker/blob/master/doc/error-codes.md for the list of warnings and possibly add a new one</param>
+		/// <param name="origin">Filename or member where the warning is coming from</param>
+		/// <param name="subcategory">Optionally, further categorize this warning</param>
+		/// <returns>New MessageContainer of 'Warning' category</returns>
+		public void LogWarning (string text, int code, MessageOrigin origin, string subcategory = MessageSubCategory.None)
+		{
+			if (!LogMessages)
+				return;
+
+			var version = GetWarningVersion (code);
+
+			if ((GeneralWarnAsError && (!WarnAsError.TryGetValue ((uint) code, out var warnAsError) || warnAsError)) ||
+				(!GeneralWarnAsError && (WarnAsError.TryGetValue ((uint) code, out warnAsError) && warnAsError))) {
+				LogError (text, code, subcategory, origin, isWarnAsError: true, version: version);
+				return;
+			}
+
+			var warning = MessageContainer.CreateWarningMessage (this, text, code, origin, subcategory, version);
+			LogMessage (warning);
+		}
+
+		/// <summary>
+		/// Display a warning message to the end user.
+		/// This API is used for warnings defined in the linker, not by custom steps. Warning
+		/// versions are inferred from the code, and every warning that we define is versioned.
+		/// </summary>
+		/// <param name="text">Humanly readable message describing the warning</param>
+		/// <param name="code">Unique warning ID. Please see https://github.com/mono/linker/blob/master/doc/error-codes.md for the list of warnings and possibly add a new one</param>
+		/// <param name="origin">Type or member where the warning is coming from</param>
+		/// <param name="subcategory">Optionally, further categorize this warning</param>
+		/// <returns>New MessageContainer of 'Warning' category</returns>
+		public void LogWarning (string text, int code, IMemberDefinition origin, int? ilOffset = null, string subcategory = MessageSubCategory.None)
+		{
+			MessageOrigin _origin = new MessageOrigin (origin, ilOffset);
+			LogWarning (text, code, _origin, subcategory);
+		}
+
+		/// <summary>
+		/// Display a warning message to the end user.
+		/// This API is used for warnings defined in the linker, not by custom steps. Warning
+		/// versions are inferred from the code, and every warning that we define is versioned.
+		/// </summary>
+		/// <param name="text">Humanly readable message describing the warning</param>
+		/// <param name="code">Unique warning ID. Please see https://github.com/mono/linker/blob/master/doc/error-codes.md for the list of warnings and possibly add a new one</param>
+		/// <param name="origin">Filename where the warning is coming from</param>
+		/// <param name="subcategory">Optionally, further categorize this warning</param>
+		/// <returns>New MessageContainer of 'Warning' category</returns>
+		public void LogWarning (string text, int code, string origin, string subcategory = MessageSubCategory.None)
+		{
+			MessageOrigin _origin = new MessageOrigin (origin);
+			LogWarning (text, code, _origin, subcategory);
+		}
+
+		/// <summary>
+		/// Display an error message to the end user.
+		/// </summary>
+		/// <param name="text">Humanly readable message describing the error</param>
+		/// <param name="code">Unique error ID. Please see https://github.com/mono/linker/blob/master/doc/error-codes.md for the list of errors and possibly add a new one</param>
+		/// <param name="subcategory">Optionally, further categorize this error</param>
+		/// <param name="origin">Filename, line, and column where the error was found</param>
+		/// <returns>New MessageContainer of 'Error' category</returns>
+		public void LogError (string text, int code, string subcategory = MessageSubCategory.None, MessageOrigin? origin = null, bool isWarnAsError = false, WarnVersion? version = null)
+		{
+			if (!LogMessages)
+				return;
+
+			var error = MessageContainer.CreateErrorMessage (text, code, subcategory, origin, isWarnAsError, version);
+			LogMessage (error);
+		}
+
+		public bool IsWarningSuppressed (int warningCode, MessageOrigin origin)
+		{
+			if (Suppressions == null)
+				return false;
+
+			return Suppressions.IsSuppressed (warningCode, origin, out _);
+		}
+
+		public static WarnVersion GetWarningVersion (int code)
+		{
+			// This should return an increasing WarnVersion for new warning waves.
+			return WarnVersion.ILLink5;
 		}
 	}
 
@@ -460,7 +646,6 @@ namespace Mono.Linker {
 
 		public bool IsEnabled (CodeOptimizations optimizations, string assemblyName)
 		{
-			Debug.Assert (assemblyName != null);
 			// Only one bit is set
 			Debug.Assert (optimizations != 0 && (optimizations & (optimizations - 1)) == 0);
 
@@ -484,7 +669,7 @@ namespace Mono.Linker {
 				return;
 			}
 
-			perAssembly [assemblyContext] |= optimizations;
+			perAssembly[assemblyContext] |= optimizations;
 		}
 
 		public void Disable (CodeOptimizations optimizations, string assemblyContext = null)
@@ -499,7 +684,7 @@ namespace Mono.Linker {
 				return;
 			}
 
-			perAssembly [assemblyContext] &= ~optimizations;
+			perAssembly[assemblyContext] &= ~optimizations;
 		}
 	}
 
@@ -507,7 +692,7 @@ namespace Mono.Linker {
 	public enum CodeOptimizations
 	{
 		BeforeFieldInit = 1 << 0,
-		
+
 		/// <summary>
 		/// Option to disable removal of overrides of virtual methods when a type is never instantiated
 		///
@@ -515,30 +700,25 @@ namespace Mono.Linker {
 		/// that do not get an instance constructor marked.
 		/// </summary>
 		OverrideRemoval = 1 << 1,
-		
+
 		/// <summary>
 		/// Option to disable delaying marking of instance methods until an instance of that type could exist
 		/// </summary>
 		UnreachableBodies = 1 << 2,
 
 		/// <summary>
-		/// Option to clear the initlocals flag on methods
-		/// </summary>
-		ClearInitLocals = 1 << 3,
-
-		/// <summary>
 		/// Option to remove .interfaceimpl for interface types that are not used
 		/// </summary>
-		UnusedInterfaces = 1 << 4,
+		UnusedInterfaces = 1 << 3,
 
 		/// <summary>
 		/// Option to do interprocedural constant propagation on return values
 		/// </summary>
-		IPConstantPropagation = 1 << 5,
+		IPConstantPropagation = 1 << 4,
 
 		/// <summary>
 		/// Devirtualizes methods and seals types
 		/// </summary>
-		Sealer = 1 << 6
+		Sealer = 1 << 5
 	}
 }

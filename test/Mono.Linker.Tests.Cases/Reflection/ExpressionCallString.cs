@@ -1,7 +1,8 @@
-﻿using Mono.Linker.Tests.Cases.Expectations.Assertions;
-using System.Linq.Expressions;
-using System;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Linq.Expressions;
+using Mono.Linker.Tests.Cases.Expectations.Assertions;
 using Mono.Linker.Tests.Cases.Expectations.Metadata;
 
 namespace Mono.Linker.Tests.Cases.Reflection
@@ -12,88 +13,160 @@ namespace Mono.Linker.Tests.Cases.Reflection
 	{
 		public static void Main ()
 		{
-			TestByName ();
-			TestByNameWithParameters ();
-			TestNullName ();
-			TestNonExistingName ();
-			TestNullType ();
-			TestDataFlowType ();
-		}
+			Expression.Call (typeof (Foo), "PublicStaticMethod", Type.EmptyTypes);
+			Expression.Call (typeof (Foo), "PublicNonStaticMethod", Type.EmptyTypes);
+			Expression.Call (typeof (Foo), "ProtectedStaticMethod", Type.EmptyTypes);
+			Expression.Call (typeof (Foo), "ProtectedNonStaticMethod", Type.EmptyTypes);
+			Expression.Call (typeof (Foo), "PrivateStaticMethod", Type.EmptyTypes);
+			Expression.Call (typeof (Foo), "PrivateNonStaticMethod", Type.EmptyTypes);
 
-		[RecognizedReflectionAccessPattern (
-			typeof (Expression), nameof (Expression.Call), new Type [] { typeof (Type), typeof (string), typeof (Type[]), typeof (Expression []) },
-			typeof (ExpressionCallString), nameof (OnlyCalledViaExpression), new Type [0])]
-		[Kept]
-		static void TestByName ()
-		{
-			var expr = Expression.Call (typeof (ExpressionCallString), "OnlyCalledViaExpression", Type.EmptyTypes);
-			Console.WriteLine (expr.Method);
-		}
+			Expression.Call (typeof (Derived), "PublicOnBase", Type.EmptyTypes);
+			Expression.Call (typeof (Derived), "ProtectedOnBase", Type.EmptyTypes);
+			Expression.Call (typeof (Derived), "PrivateOnBase", Type.EmptyTypes);
 
-		[RecognizedReflectionAccessPattern (
-			typeof (Expression), nameof (Expression.Call), new Type [] { typeof (Type), typeof (string), typeof (Type []), typeof (Expression []) },
-			typeof (ExpressionCallString), nameof (Count) + "<T>", new string [] { "T" } )]
-		[Kept]
-		static void TestByNameWithParameters ()
-		{
-			IQueryable source = null;
-			var e2 = Expression.Call (typeof (ExpressionCallString), "Count", new Type [] { source.ElementType }, source.Expression);
-		}
+			// Keep all methods on type Bar
+			Expression.Call (typeof (Bar), GetUnknownString (), Type.EmptyTypes);
 
-		[UnrecognizedReflectionAccessPattern (
-			typeof (Expression), nameof (Expression.Call), new Type [] { typeof (Type), typeof (string), typeof (Type []), typeof (Expression []) })]
-		[Kept]
-		static void TestNullName ()
-		{
-			var expr = Expression.Call (typeof (ExpressionCallString), null, Type.EmptyTypes);
-		}
-
-		[UnrecognizedReflectionAccessPattern (
-			typeof (Expression), nameof (Expression.Call), new Type [] { typeof (Type), typeof (string), typeof (Type []), typeof (Expression []) })]
-		[Kept]
-		static void TestNonExistingName ()
-		{
-			var expr = Expression.Call (typeof (ExpressionCallString), "NonExisting", Type.EmptyTypes);
-		}
-
-		[UnrecognizedReflectionAccessPattern (
-			typeof (Expression), nameof (Expression.Call), new Type [] { typeof (Type), typeof (string), typeof (Type []), typeof (Expression []) })]
-		[Kept]
-		static void TestNullType ()
-		{
-			var expr = Expression.Call ((Type)null, "OnlyCalledViaExpression", Type.EmptyTypes);
+			TestUnknownType.Test ();
 		}
 
 		[Kept]
-		static Type FindType ()
+		static string GetUnknownString ()
 		{
-			return typeof (ExpressionCallString);
-		}
-
-		[UnrecognizedReflectionAccessPattern (
-			typeof (Expression), nameof (Expression.Call), new Type [] { typeof (Type), typeof (string), typeof (Type []), typeof (Expression []) })]
-		[Kept]
-		static void TestDataFlowType ()
-		{
-			var expr = Expression.Call (FindType (), "OnlyCalledViaExpression", Type.EmptyTypes);
+			return "unknownstring";
 		}
 
 		[Kept]
-		private static int OnlyCalledViaExpression ()
+		class TestUnknownType
 		{
-			return 42;
+			[Kept]
+			public static void PublicMethod ()
+			{
+			}
+
+			[Kept]
+			protected static void ProtectedMethod ()
+			{
+			}
+
+			[Kept]
+			private static void PrivateMethod ()
+			{
+			}
+
+			[Kept]
+			[UnrecognizedReflectionAccessPattern (typeof (Expression), nameof (Expression.Call),
+				new Type[] { typeof (Type), typeof (string), typeof (Type[]), typeof (Expression[]) })]
+			public static void Test ()
+			{
+				// Keep all methods of the type that made the call
+				Expression.Call (GetUnknownType (), "This string will not be reached", Type.EmptyTypes);
+				// UnrecognizedReflectionAccessPattern
+				Expression.Call (TriggerUnrecognizedPattern (), "This string will not be reached", Type.EmptyTypes);
+			}
+
+			[Kept]
+			[return: KeptAttributeAttribute (typeof (DynamicallyAccessedMembersAttribute))]
+			[return: DynamicallyAccessedMembers (DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)]
+			static Type GetUnknownType ()
+			{
+				return typeof (TestUnknownType);
+			}
+
+			[Kept]
+			static Type TriggerUnrecognizedPattern ()
+			{
+				return typeof (TestUnknownType);
+			}
+		}
+
+
+		[Kept]
+		class Foo
+		{
+			[Kept]
+			public static void PublicStaticMethod ()
+			{
+			}
+
+			public void PublicNonStaticMethod ()
+			{
+			}
+
+			[Kept]
+			protected static void ProtectedStaticMethod ()
+			{
+			}
+			protected void ProtectedNonStaticMethod ()
+			{
+			}
+
+			[Kept]
+			private static void PrivateStaticMethod ()
+			{
+			}
+
+			private void PrivateNonStaticMethod ()
+			{
+			}
 		}
 
 		[Kept]
-		private static int OnlyCalledViaExpression<T> (T arg)
+		class Bar
 		{
-			return 2;
+			[Kept]
+			public static void PublicStaticMethod ()
+			{
+			}
+
+			[Kept]
+			public void PublicNonStaticMethod ()
+			{
+			}
+
+			[Kept]
+			protected static void ProtectedStaticMethod ()
+			{
+			}
+
+			[Kept]
+			protected void ProtectedNonStaticMethod ()
+			{
+			}
+
+			[Kept]
+			private static void PrivateStaticMethod ()
+			{
+			}
+
+			[Kept]
+			private void PrivateNonStaticMethod ()
+			{
+			}
 		}
 
 		[Kept]
-		protected static T Count<T> (T t)
+		class Base
 		{
-			return default (T);
+			[Kept]
+			public static void PublicOnBase ()
+			{
+			}
+
+			[Kept]
+			protected static void ProtectedOnBase ()
+			{
+			}
+
+			private static void PrivateOnBase ()
+			{
+			}
+		}
+
+		[Kept]
+		[KeptBaseType (typeof (Base))]
+		class Derived : Base
+		{
 		}
 	}
 }

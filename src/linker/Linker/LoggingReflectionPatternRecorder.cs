@@ -24,6 +24,7 @@
 //
 
 using Mono.Cecil;
+using Mono.Cecil.Cil;
 
 namespace Mono.Linker
 {
@@ -36,14 +37,15 @@ namespace Mono.Linker
 			_context = context;
 		}
 
-		public void RecognizedReflectionAccessPattern (MethodDefinition sourceMethod, MethodDefinition reflectionMethod, IMetadataTokenProvider accessedItem)
+		public void RecognizedReflectionAccessPattern (IMemberDefinition source, Instruction sourceInstruction, IMetadataTokenProvider accessedItem)
 		{
 			// Do nothing - there's no logging for successfully recognized patterns
 		}
 
-		public void UnrecognizedReflectionAccessPattern (MethodDefinition sourceMethod, MethodDefinition reflectionMethod, string message)
+		public void UnrecognizedReflectionAccessPattern (IMemberDefinition source, Instruction sourceInstruction, IMetadataTokenProvider accessedItem, string message)
 		{
-			_context.LogMessage (MessageImportance.Low, message);
+			var origin = new MessageOrigin (source, sourceInstruction?.Offset);
+			_context.LogWarning (message, 2006, origin, MessageSubCategory.TrimAnalysis);
 		}
 	}
 }

@@ -5,7 +5,12 @@ using Mono.Linker.Tests.Cases.Expectations.Metadata;
 
 [assembly: DebuggerDisplay ("{Property}", Target = typeof (DebuggerDisplayAttributeOnAssemblyUsingTargetOnUnusedType.Foo))]
 
-namespace Mono.Linker.Tests.Cases.Attributes.Debugger {
+namespace Mono.Linker.Tests.Cases.Attributes.Debugger
+{
+#if NETCOREAPP
+	[SetupLinkAttributesFile ("DebuggerAttributesRemoved.xml")]
+	[SetupLinkerCoreAction ("copy")]
+#else
 	[SetupLinkerCoreAction ("link")]
 	[SetupLinkerKeepDebugMembers ("false")]
 
@@ -13,12 +18,15 @@ namespace Mono.Linker.Tests.Cases.Attributes.Debugger {
 	[SkipPeVerify (SkipPeVerifyForToolchian.Pedump)]
 
 	[KeptMemberInAssembly (PlatformAssemblies.CoreLib, typeof (DebuggerDisplayAttribute), ".ctor(System.String)")]
-	public class DebuggerDisplayAttributeOnAssemblyUsingTargetOnUnusedType {
+#endif
+	public class DebuggerDisplayAttributeOnAssemblyUsingTargetOnUnusedType
+	{
 		public static void Main ()
 		{
 		}
 
-		public class Foo {
+		public class Foo
+		{
 			public int Property { get; set; }
 		}
 	}

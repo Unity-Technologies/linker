@@ -28,13 +28,12 @@
 
 using System;
 using System.Collections.Generic;
-
 using Mono.Cecil;
 
-namespace Mono.Linker.Steps {
-
-	public class LoadReferencesStep : BaseStep {
-
+namespace Mono.Linker.Steps
+{
+	public class LoadReferencesStep : BaseStep
+	{
 		readonly HashSet<AssemblyNameDefinition> references = new HashSet<AssemblyNameDefinition> ();
 
 		protected override void ProcessAssembly (AssemblyDefinition assembly)
@@ -53,7 +52,8 @@ namespace Mono.Linker.Steps {
 				try {
 					ProcessReferences (referenceDefinition);
 				} catch (Exception ex) {
-					throw new LoadException (string.Format ("Error while processing references of '{0}'", assembly.FullName), ex);
+					throw new LinkerFatalErrorException (
+						MessageContainer.CreateErrorMessage ($"Assembly '{assembly.FullName}' cannot be loaded due to failure in processing '{referenceDefinition.FullName}' reference", 1010), ex);
 				}
 			}
 		}

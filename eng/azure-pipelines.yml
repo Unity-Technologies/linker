@@ -120,6 +120,15 @@ stages:
             displayName: Build illink.sln $(_BuildConfig)
 
   - ${{ if eq(variables.officialBuild, 'false') }}:
+    - job: Lint
+      pool:
+          name: Hosted Ubuntu 1604
+      steps:
+      - checkout: self
+        submodules: true
+      - script: ./lint.sh --dry-run --check
+
+  - ${{ if eq(variables.officialBuild, 'false') }}:
     - job: Linux_Mono
       pool:
         name: Hosted Ubuntu 1604
