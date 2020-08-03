@@ -11,6 +11,7 @@
     <Description>Mono CIL Linker</Description>
     <Copyright>(C) 2006, Jb Evain</Copyright>
     <OutputPath>$(SolutionDir)build/lib/</OutputPath>
+    <NoWarn>$(NoWarn);CS8602;CS0618</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
