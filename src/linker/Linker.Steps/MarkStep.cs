@@ -82,20 +82,20 @@ namespace Mono.Linker.Steps {
 			Tracer.Push (assembly);
 			try {
 				switch (_context.Annotations.GetAction (assembly)) {
-				case AssemblyAction.Copy:
-				case AssemblyAction.Save:
-					MarkEntireAssembly (assembly);
-					break;
-				case AssemblyAction.Link:
-				case AssemblyAction.AddBypassNGen:
-				case AssemblyAction.AddBypassNGenUsed:
-					MarkAssembly (assembly);
+			case AssemblyAction.Copy:
+			case AssemblyAction.Save:
+				MarkEntireAssembly (assembly);
+				break;
+			case AssemblyAction.Link:
+			case AssemblyAction.AddBypassNGen:
+			case AssemblyAction.AddBypassNGenUsed:
+				MarkAssembly (assembly);
 
-					foreach (TypeDefinition type in assembly.MainModule.Types)
-						InitializeType (type);
+				foreach (TypeDefinition type in assembly.MainModule.Types)
+					InitializeType (type);
 
-					break;
-				}
+				break;
+			}
 			} finally {
 				Tracer.Pop ();
 			}
@@ -207,34 +207,34 @@ namespace Mono.Linker.Steps {
 		{
 			while (ProcessPrimaryQueue () || ProcessLazyAttributes () || ProcessLateMarkedAttributes ())
 
-			// deal with [TypeForwardedTo] pseudo-attributes
-			foreach (AssemblyDefinition assembly in _context.GetAssemblies ()) {
-				if (!assembly.MainModule.HasExportedTypes)
-					continue;
+				// deal with [TypeForwardedTo] pseudo-attributes
+				foreach (AssemblyDefinition assembly in _context.GetAssemblies ()) {
+					if (!assembly.MainModule.HasExportedTypes)
+						continue;
 
-				foreach (var exported in assembly.MainModule.ExportedTypes) {
-					bool isForwarder = exported.IsForwarder;
-					var declaringType = exported.DeclaringType;
-					while (!isForwarder && (declaringType != null)) {
-						isForwarder = declaringType.IsForwarder;
-						declaringType = declaringType.DeclaringType;
-					}
+					foreach (var exported in assembly.MainModule.ExportedTypes) {
+						bool isForwarder = exported.IsForwarder;
+						var declaringType = exported.DeclaringType;
+						while (!isForwarder && (declaringType != null)) {
+							isForwarder = declaringType.IsForwarder;
+							declaringType = declaringType.DeclaringType;
+						}
 
-					if (!isForwarder)
-						continue;
-					TypeDefinition type = exported.Resolve ();
-					if (type == null)
-						continue;
-					if (!Annotations.IsMarked (type))
-						continue;
+						if (!isForwarder)
+							continue;
+						TypeDefinition type = exported.Resolve ();
+						if (type == null)
+							continue;
+						if (!Annotations.IsMarked (type))
+							continue;
 					Tracer.Push (type);
 					try {
 						_context.MarkingHelpers.MarkExportedType (exported, assembly.MainModule);
 					} finally {
 						Tracer.Pop ();
 					}
+					}
 				}
-			}
 		}
 
 		bool ProcessPrimaryQueue ()
@@ -322,9 +322,9 @@ namespace Mono.Linker.Steps {
 			if (overrides == null)
 				return;
 
-			foreach (OverrideInformation @override in overrides)
-				ProcessOverride (@override);
-		}
+				foreach (OverrideInformation @override in overrides)
+					ProcessOverride (@override);
+			}
 
 		void ProcessOverride (OverrideInformation overrideInformation)
 		{
@@ -369,13 +369,13 @@ namespace Mono.Linker.Steps {
 
 				// There are no derived interface types that could be marked, it's safe to skip marking this override
 				if (derivedInterfaceTypes == null)
-					return true;
+				return true;
 
 				// If none of the other interfaces on the type that implement the interface from the @base type are marked, then it's safe to skip
 				// marking this override
 				if (!derivedInterfaceTypes.Any (d => IsInterfaceImplementationMarked (overrideDeclaringType, d)))
-					return true;
-			}
+						return true;
+				}
 
 			return false;
 		}
@@ -426,12 +426,12 @@ namespace Mono.Linker.Steps {
 			if (IsUserDependencyMarker (ca.AttributeType) && provider is MemberReference mr) {
 				MarkUserDependency (mr, ca);
 
-				if (_context.KeepDependencyAttributes || Annotations.GetAction (mr.Module.Assembly) != AssemblyAction.Link) {
+			if (_context.KeepDependencyAttributes || Annotations.GetAction (mr.Module.Assembly) != AssemblyAction.Link) {
 					MarkCustomAttribute (ca);
-				}
-
-				return true;
 			}
+
+			return true;
+		}
 
 			return false;
 		}
@@ -465,7 +465,7 @@ namespace Mono.Linker.Steps {
 					break;
 				case "DEBUG":
 					if (!_context.KeepMembersForDebugger)
-						return;
+				return;
 
 					break;
 				default:
@@ -610,13 +610,13 @@ namespace Mono.Linker.Steps {
 
 				MarkCustomAttributeArguments (ca);
 
-				TypeReference constructor_type = ca.Constructor.DeclaringType;
-				TypeDefinition type = constructor_type.Resolve ();
+			TypeReference constructor_type = ca.Constructor.DeclaringType;
+			TypeDefinition type = constructor_type.Resolve ();
 
-				if (type == null) {
-					HandleUnresolvedType (constructor_type);
-					return;
-				}
+			if (type == null) {
+				HandleUnresolvedType (constructor_type);
+				return;
+			}
 
 				MarkCustomAttributeProperties (ca, type);
 				MarkCustomAttributeFields (ca, type);
@@ -690,7 +690,7 @@ namespace Mono.Linker.Steps {
 					if (displayTargetType == null || !Annotations.IsMarked (displayTargetType))
 						return false;
 				}			
-			}
+				}
 			
 			return true;
 		}
@@ -1645,14 +1645,14 @@ namespace Mono.Linker.Steps {
 		protected virtual bool AlwaysMarkTypeAsInstantiated (TypeDefinition td)
 		{
 			switch (td.Name) {
-				// These types are created from native code which means we are unable to track when they are instantiated
-				// Since these are such foundational types, let's take the easy route and just always assume an instance of one of these
-				// could exist
-				case "Delegate":
-				case "MulticastDelegate":
-				case "ValueType":
-				case "Enum":
-					return td.Namespace == "System";
+			// These types are created from native code which means we are unable to track when they are instantiated
+			// Since these are such foundational types, let's take the easy route and just always assume an instance of one of these
+			// could exist
+			case "Delegate":
+			case "MulticastDelegate":
+			case "ValueType":
+			case "Enum":
+				return td.Namespace == "System";
 			}
 
 			return false;
@@ -1912,13 +1912,13 @@ namespace Mono.Linker.Steps {
 			MethodDefinition method = reference.Resolve ();
 
 			try {
-				if (method == null) {
-					HandleUnresolvedMethod (reference);
-					return null;
-				}
+			if (method == null) {
+				HandleUnresolvedMethod (reference);
+				return null;
+			}
 
-				if (Annotations.GetAction (method) == MethodAction.Nothing)
-					Annotations.SetAction (method, MethodAction.Parse);
+			if (Annotations.GetAction (method) == MethodAction.Nothing)
+				Annotations.SetAction (method, MethodAction.Parse);
 
 				EnqueueMethod (method);
 			} finally {
@@ -2168,13 +2168,13 @@ namespace Mono.Linker.Steps {
 			TypeDefinition returnTypeDefinition = method.ReturnType.Resolve ();
 
 			if (!string.IsNullOrEmpty(_context.PInvokesListFile) && method.IsPInvokeImpl) {
-				_context.PInvokes.Add (new PInvokeInfo {
-					AssemblyName = method.DeclaringType.Module.Name,
+					_context.PInvokes.Add (new PInvokeInfo {
+						AssemblyName = method.DeclaringType.Module.Name,
 					EntryPoint = method.PInvokeInfo.EntryPoint,
-					FullName = method.FullName,
+						FullName = method.FullName,
 					ModuleName = method.PInvokeInfo.Module.Name
-				});
-			}
+					});
+				}
 
 			const bool includeStaticFields = false;
 			if (returnTypeDefinition != null && !returnTypeDefinition.IsImport) {
@@ -2194,7 +2194,7 @@ namespace Mono.Linker.Steps {
 				TypeDefinition paramTypeDefinition = paramTypeReference.Resolve ();
 				if (paramTypeDefinition != null && !paramTypeDefinition.IsImport) {
 					MarkFields (paramTypeDefinition, includeStaticFields);
-					if (pd.ParameterType.IsByReference) {
+						if (pd.ParameterType.IsByReference) {
 						MarkDefaultConstructor (paramTypeDefinition);
 					}
 				}
@@ -2302,19 +2302,19 @@ namespace Mono.Linker.Steps {
 			switch (instruction.OpCode.OperandType) {
 			case OperandType.InlineField:
 				MarkField ((FieldReference) instruction.Operand);
-				break;
+					break;
 			case OperandType.InlineMethod:
 				MarkMethod ((MethodReference) instruction.Operand);
 				break;
 			case OperandType.InlineTok:
-				object token = instruction.Operand;
+					object token = instruction.Operand;
 				if (token is TypeReference typeReference)
 					MarkType (typeReference);
 				else if (token is MethodReference methodReference)
 					MarkMethod (methodReference);
 				else
 					MarkField ((FieldReference) token);
-				break;
+					break;
 			case OperandType.InlineType:
 				if (instruction.OpCode.Code == Code.Newarr) {
 					Annotations.MarkRelevantToVariantCasting (((TypeReference) instruction.Operand).Resolve ());
@@ -2368,6 +2368,8 @@ namespace Mono.Linker.Steps {
 
 		protected virtual void MarkInterfaceImplementation (InterfaceImplementation iface)
 		{
+                        if (Annotations.IsMarked (iface))
+				return;
 			MarkCustomAttributes (iface);
 			MarkType (iface.InterfaceType);
 			Annotations.Mark (iface);
@@ -2424,7 +2426,7 @@ namespace Mono.Linker.Steps {
 					reflectionContext.Dispose ();
 				}
 			}
-		}
+			}
 
 		/// <summary>
 		/// Helper struct to pass around context information about reflection pattern
@@ -2518,10 +2520,10 @@ namespace Mono.Linker.Steps {
 				_markStep = markStep;
 				_methodCalling = callingMethod;
 				_instructions = _methodCalling.Body.Instructions;
-			}
+		}
 
 			public void Process (ref ReflectionPatternContext reflectionContext)
-			{
+		{
 				var methodCalled = reflectionContext.MethodCalled;
 				var instructionIndex = reflectionContext.InstructionIndex;
 				var methodCalledType = methodCalled.DeclaringType;
