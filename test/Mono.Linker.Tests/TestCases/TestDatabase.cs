@@ -212,6 +212,8 @@ namespace Mono.Linker.Tests.TestCases
 
 #if NETCOREAPP3_0
 			var tfm = "netcoreapp3.0";
+#elif NETCOREAPP3_1
+			var tfm = "netcoreapp3.1";
 #elif NET471
 			var tfm = "net471";
 #else

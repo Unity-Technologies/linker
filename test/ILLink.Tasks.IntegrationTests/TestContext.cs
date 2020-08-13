@@ -68,7 +68,7 @@ namespace ILLink.Tests
 #endif
 
 			// Locate tasks assembly
-			var tasksAssembly = Path.Combine(repoRoot, "artifacts", "bin", "ILLink.Tasks", illinkConfiguration, "netcoreapp3.0", "ILLink.Tasks.dll");
+			var tasksAssembly = Path.Combine(repoRoot, "artifacts", "bin", "ILLink.Tasks", illinkConfiguration, "netcoreapp3.1", "ILLink.Tasks.dll");
 			if (!File.Exists(tasksAssembly)) {
 				throw new Exception("ILLink.Tasks not found at " + tasksAssembly);
 			}
