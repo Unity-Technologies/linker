@@ -10,7 +10,7 @@
 
   <PropertyGroup Condition="'$(MonoBuild)' == ''">
     <DefineConstants>$(DefineConstants);FEATURE_ILLINK</DefineConstants>
-    <TargetFrameworks>netcoreapp3.1;net471</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.0;net471</TargetFrameworks>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(MonoBuild)' != ''">
