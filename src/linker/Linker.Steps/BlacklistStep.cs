@@ -46,6 +46,7 @@ namespace Mono.Linker.Steps
 		{
 			var steps_to_add = new Stack<IStep> ();
 
+#if !ILLINK
 			foreach (string name in Assembly.GetExecutingAssembly ().GetManifestResourceNames ()) {
 				if (!name.EndsWith (".xml", StringComparison.OrdinalIgnoreCase) || !ShouldProcessRootDescriptorResource (GetAssemblyName (name)))
 					continue;
@@ -58,12 +59,18 @@ namespace Mono.Linker.Steps
 					Context.LogError ($"Error processing {name}: {ex}", 1003);
 				}
 			}
+#endif
 
 			foreach (var asm in Context.GetAssemblies ()) {
+				if (Annotations.GetAction (asm) == AssemblyAction.Skip)
+					continue;
+
 				var embeddedXml = asm.Modules
 					.SelectMany (mod => mod.Resources)
 					.Where (res => res.ResourceType == ResourceType.Embedded)
-					.Where (res => res.Name.EndsWith (".xml", StringComparison.OrdinalIgnoreCase));
+					.Where (res => res.Name.EndsWith (".xml", StringComparison.OrdinalIgnoreCase))
+					.ToArray ();
+
 				foreach (var rsc in embeddedXml
 									.Where (res => ShouldProcessRootDescriptorResource (res.Name))
 									.Cast<EmbeddedResource> ()) {
@@ -91,10 +98,10 @@ namespace Mono.Linker.Steps
 									.Where (res => res.Name.Equals ("ILLink.LinkAttributes.xml", StringComparison.OrdinalIgnoreCase))
 									.Cast<EmbeddedResource> ()) {
 					try {
-						Context.LogMessage (MessageContainer.CreateInfoMessage ($"Processing embedded {rsc.Name} from {asm.Name}"));
+						Context.LogMessage ($"Processing embedded {rsc.Name} from {asm.Name}");
 						steps_to_add.Push (GetExternalLinkAttributesStep (rsc, asm));
 					} catch (XmlException ex) {
-						Context.LogMessage (MessageContainer.CreateErrorMessage ($"Error processing {rsc.Name} from {asm.Name}: {ex}", 1003));
+						Context.LogError ($"Error processing {rsc.Name} from {asm.Name}: {ex}", 1003);
 					}
 				}
 			}

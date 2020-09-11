@@ -145,9 +145,9 @@ namespace Mono.Linker
 			}
 		}
 
-		static void ErrorMissingArgument (string optionName)
+		void ErrorMissingArgument (string optionName)
 		{
-			Console.WriteLine ($"Missing argument for '{optionName}' option");
+			context.LogError ($"Missing argument for '{optionName}' option", 1018);
 		}
 
 		// Perform setup of the LinkContext and parse the arguments.
@@ -301,7 +301,7 @@ namespace Mono.Linker
 						var arg = arguments.Dequeue ();
 						string[] values = arg.Split ('=');
 						if (values?.Length != 2) {
-							Console.WriteLine ($"Value used with '--custom-data' has to be in the KEY=VALUE format");
+							context.LogError ($"Value used with '--custom-data' has to be in the KEY=VALUE format", 1019);
 							return -1;
 						}
 
@@ -426,7 +426,17 @@ namespace Mono.Linker
 						continue;
 
 					case "--generate-warning-suppressions":
+						string generateWarningSuppressionsArgument = string.Empty;
+						if (!GetStringParam (token, l => generateWarningSuppressionsArgument = l))
+							return -1;
+
+						if (!GetWarningSuppressionWriterFileOutputKind (generateWarningSuppressionsArgument, out var fileOutputKind)) {
+							context.LogError ($"Invalid value '{generateWarningSuppressionsArgument}' for '--generate-warning-suppressions' option", 1017);
+							return -1;
+						}
+
 						context.OutputWarningSuppressions = true;
+						context.SetWarningSuppressionWriter (fileOutputKind);
 						continue;
 
 					case "--nowarn":
@@ -434,14 +444,14 @@ namespace Mono.Linker
 						if (!GetStringParam (token, l => noWarnArgument = l))
 							return -1;
 
-						context.NoWarn.UnionWith (ParseWarnings (noWarnArgument));
+						context.NoWarn.UnionWith (ProcessWarningCodes (noWarnArgument));
 						continue;
 
 					case "--warnaserror":
 					case "--warnaserror+":
 						var warningList = GetNextStringValue ();
 						if (!string.IsNullOrEmpty (warningList)) {
-							foreach (var warning in ParseWarnings (warningList))
+							foreach (var warning in ProcessWarningCodes (warningList))
 								context.WarnAsError[warning] = true;
 
 						} else {
@@ -454,7 +464,7 @@ namespace Mono.Linker
 					case "--warnaserror-":
 						warningList = GetNextStringValue ();
 						if (!string.IsNullOrEmpty (warningList)) {
-							foreach (var warning in ParseWarnings (warningList))
+							foreach (var warning in ProcessWarningCodes (warningList))
 								context.WarnAsError[warning] = false;
 
 						} else {
@@ -603,12 +613,12 @@ namespace Mono.Linker
 			}
 
 			if (!resolver) {
-				Console.WriteLine ($"No files to link were specified. Use one of '{resolvers}' options");
+				context.LogError ($"No files to link were specified. Use one of '{resolvers}' options", 1020);
 				return -1;
 			}
 
 			if (new_mvid_used && deterministic_used) {
-				Console.WriteLine ($"Options '--new-mvid' and '--deterministic' cannot be used at the same time");
+				context.LogError ($"Options '--new-mvid' and '--deterministic' cannot be used at the same time", 1021);
 				return -1;
 			}
 
@@ -765,7 +775,7 @@ namespace Mono.Linker
 
 		partial void PreProcessPipeline (Pipeline pipeline);
 
-		private static HashSet<uint> ParseWarnings (string value)
+		private IEnumerable<int> ProcessWarningCodes (string value)
 		{
 			string Unquote (string arg)
 			{
@@ -777,29 +787,23 @@ namespace Mono.Linker
 
 			value = Unquote (value);
 			string[] values = value.Split (new char[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-			HashSet<uint> warningCodes = new HashSet<uint> ();
 			foreach (string id in values) {
-				if (!id.StartsWith ("IL", StringComparison.Ordinal))
+				if (!id.StartsWith ("IL", StringComparison.Ordinal) || !ushort.TryParse (id.Substring (2), out ushort code))
 					continue;
 
-				var warningCode = id.Substring (2);
-				if (ushort.TryParse (warningCode, out ushort code)
-					&& code > 2000 && code <= 6000)
-					warningCodes.Add (code);
+				yield return code;
 			}
-
-			return warningCodes;
 		}
 
-		private static Assembly GetCustomAssembly (string arg)
+		Assembly GetCustomAssembly (string arg)
 		{
 			if (Path.IsPathRooted (arg)) {
 				var assemblyPath = Path.GetFullPath (arg);
 				if (File.Exists (assemblyPath))
 					return Assembly.Load (File.ReadAllBytes (assemblyPath));
-				Console.WriteLine ($"The assembly '{arg}' specified for '--custom-step' option could not be found");
+				context.LogError ($"The assembly '{arg}' specified for '--custom-step' option could not be found", 1022);
 			} else
-				Console.WriteLine ($"The path to the assembly '{arg}' specified for '--custom-step' must be fully qualified");
+				context.LogError ($"The path to the assembly '{arg}' specified for '--custom-step' must be fully qualified", 1023);
 
 			return null;
 		}
@@ -824,7 +828,7 @@ namespace Mono.Linker
 			context.Tracer.AddRecorder (new XmlDependencyRecorder (context, fileName));
 		}
 
-		protected static bool AddCustomStep (Pipeline pipeline, string arg)
+		protected bool AddCustomStep (Pipeline pipeline, string arg)
 		{
 			Assembly custom_assembly = null;
 			int pos = arg.IndexOf (",");
@@ -847,12 +851,12 @@ namespace Mono.Linker
 
 			string[] parts = arg.Split (':');
 			if (parts.Length != 2) {
-				Console.WriteLine ($"Invalid value '{arg}' specified for '--custom-step' option");
+				context.LogError ($"Invalid value '{arg}' specified for '--custom-step' option", 1024);
 				return false;
 			}
 
 			if (!parts[0].StartsWith ("-") && !parts[0].StartsWith ("+")) {
-				Console.WriteLine ($"Expected '+' or '-' to control new step insertion");
+				context.LogError ($"Expected '+' or '-' to control new step insertion", 1025);
 				return false;
 			}
 
@@ -861,7 +865,7 @@ namespace Mono.Linker
 
 			IStep target = FindStep (pipeline, name);
 			if (target == null) {
-				Console.WriteLine ($"Pipeline step '{name}' could not be found");
+				context.LogError ($"Pipeline step '{name}' could not be found", 1026);
 				return false;
 			}
 
@@ -888,17 +892,17 @@ namespace Mono.Linker
 			return null;
 		}
 
-		static IStep ResolveStep (string type, Assembly assembly)
+		IStep ResolveStep (string type, Assembly assembly)
 		{
 			Type step = assembly != null ? assembly.GetType (type) : Type.GetType (type, false);
 
 			if (step == null) {
-				Console.WriteLine ($"Custom step '{type}' could not be found");
+				context.LogError ($"Custom step '{type}' could not be found", 1027);
 				return null;
 			}
 
 			if (!typeof (IStep).IsAssignableFrom (step)) {
-				Console.WriteLine ($"Custom step '{type}' is incompatible with this linker version");
+				context.LogError ($"Custom step '{type}' is incompatible with this linker version", 1028);
 				return null;
 			}
 
@@ -962,7 +966,7 @@ namespace Mono.Linker
 			return false;
 		}
 
-		static bool GetOptimizationName (string text, out CodeOptimizations optimization)
+		protected bool GetOptimizationName (string text, out CodeOptimizations optimization)
 		{
 			switch (text.ToLowerInvariant ()) {
 			case "beforefieldinit":
@@ -985,9 +989,26 @@ namespace Mono.Linker
 				return true;
 			}
 
-			Console.WriteLine ($"Invalid optimization value '{text}'");
+			context.LogError ($"Invalid optimization value '{text}'", 1029);
 			optimization = 0;
 			return false;
+		}
+
+		static bool GetWarningSuppressionWriterFileOutputKind (string text, out WarningSuppressionWriter.FileOutputKind fileOutputKind)
+		{
+			switch (text.ToLowerInvariant ()) {
+			case "cs":
+				fileOutputKind = WarningSuppressionWriter.FileOutputKind.CSharp;
+				return true;
+
+			case "xml":
+				fileOutputKind = WarningSuppressionWriter.FileOutputKind.Xml;
+				return true;
+
+			default:
+				fileOutputKind = WarningSuppressionWriter.FileOutputKind.CSharp;
+				return false;
+			}
 		}
 
 		bool GetBoolParam (string token, Action<bool> action)
@@ -1009,7 +1030,7 @@ namespace Mono.Linker
 				return true;
 			}
 
-			Console.WriteLine ($"Invalid argument for '{token}' option");
+			context.LogError ($"Invalid argument for '{token}' option", 1030);
 			return false;
 		}
 

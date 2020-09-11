@@ -74,7 +74,7 @@ namespace Mono.Linker.Steps
 
 			MethodDefinition method = FindMethod (type, signature);
 			if (method == null) {
-				Context.LogWarning ($"Could not find method '{signature}' in type '{type.GetDisplayName ()}' specified in {_xmlDocumentLocation}", 2009, _xmlDocumentLocation);
+				Context.LogWarning ($"Could not find method '{signature}' on type '{type.GetDisplayName ()}'", 2009, _xmlDocumentLocation);
 				return;
 			}
 
@@ -110,22 +110,22 @@ namespace Mono.Linker.Steps
 
 			var field = type.Fields.FirstOrDefault (f => f.Name == name);
 			if (field == null) {
-				Context.LogWarning ($"Could not find field '{name}' in type '{type.GetDisplayName ()}' specified in { _xmlDocumentLocation}", 2012, _xmlDocumentLocation);
+				Context.LogWarning ($"Could not find field '{name}' on type '{type.GetDisplayName ()}'", 2012, _xmlDocumentLocation);
 				return;
 			}
 
 			if (!field.IsStatic || field.IsLiteral) {
-				Context.LogWarning ($"Substituted field '{name}' needs to be static field.", 2013, _xmlDocumentLocation);
+				Context.LogWarning ($"Substituted field '{field.GetDisplayName ()}' needs to be static field.", 2013, _xmlDocumentLocation);
 				return;
 			}
 
 			string value = GetAttribute (iterator.Current, "value");
 			if (string.IsNullOrEmpty (value)) {
-				Context.LogWarning ($"Missing 'value' attribute for field '{field}'.", 2014, _xmlDocumentLocation);
+				Context.LogWarning ($"Missing 'value' attribute for field '{field.GetDisplayName ()}'.", 2014, _xmlDocumentLocation);
 				return;
 			}
 			if (!TryConvertValue (value, field.FieldType, out object res)) {
-				Context.LogWarning ($"Invalid value for '{field}': '{value}'.", 2015, _xmlDocumentLocation);
+				Context.LogWarning ($"Invalid value '{value}' for '{field.GetDisplayName ()}'.", 2015, _xmlDocumentLocation);
 				return;
 			}
 
@@ -153,7 +153,7 @@ namespace Mono.Linker.Steps
 
 				string action = GetAttribute (nav, "action");
 				if (action != "remove") {
-					Context.LogWarning ($"Invalid 'action' attribute for resource '{name}'.", 2039, _xmlDocumentLocation);
+					Context.LogWarning ($"Invalid value '{action}' for attribute 'action' for resource '{name}'.", 2039, _xmlDocumentLocation);
 					continue;
 				}
 
@@ -165,107 +165,6 @@ namespace Mono.Linker.Steps
 
 				Context.Annotations.AddResourceToRemove (assembly, resource);
 			}
-		}
-
-		static bool TryConvertValue (string value, TypeReference target, out object result)
-		{
-			switch (target.MetadataType) {
-			case MetadataType.Boolean:
-				if (bool.TryParse (value, out bool bvalue)) {
-					result = bvalue ? 1 : 0;
-					return true;
-				}
-
-				goto case MetadataType.Int32;
-
-			case MetadataType.Byte:
-				if (!byte.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte byteresult))
-					break;
-
-				result = (int) byteresult;
-				return true;
-
-			case MetadataType.SByte:
-				if (!sbyte.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out sbyte sbyteresult))
-					break;
-
-				result = (int) sbyteresult;
-				return true;
-
-			case MetadataType.Int16:
-				if (!short.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out short shortresult))
-					break;
-
-				result = (int) shortresult;
-				return true;
-
-			case MetadataType.UInt16:
-				if (!ushort.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort ushortresult))
-					break;
-
-				result = (int) ushortresult;
-				return true;
-
-			case MetadataType.Int32:
-				if (!int.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int iresult))
-					break;
-
-				result = iresult;
-				return true;
-
-			case MetadataType.UInt32:
-				if (!uint.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint uresult))
-					break;
-
-				result = (int) uresult;
-				return true;
-
-			case MetadataType.Double:
-				if (!double.TryParse (value, NumberStyles.Float, CultureInfo.InvariantCulture, out double dresult))
-					break;
-
-				result = dresult;
-				return true;
-
-			case MetadataType.Single:
-				if (!float.TryParse (value, NumberStyles.Float, CultureInfo.InvariantCulture, out float fresult))
-					break;
-
-				result = fresult;
-				return true;
-
-			case MetadataType.Int64:
-				if (!long.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long lresult))
-					break;
-
-				result = lresult;
-				return true;
-
-			case MetadataType.UInt64:
-				if (!ulong.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong ulresult))
-					break;
-
-				result = (long) ulresult;
-				return true;
-
-			case MetadataType.Char:
-				if (!char.TryParse (value, out char chresult))
-					break;
-
-				result = (int) chresult;
-				return true;
-
-			case MetadataType.String:
-				if (value is string || value == null) {
-					result = value;
-					return true;
-				}
-
-				break;
-			}
-
-			result = null;
-			return false;
 		}
 
 		static MethodDefinition FindMethod (TypeDefinition type, string signature)

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Globalization;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.XPath;
 using Mono.Cecil;
@@ -87,7 +89,7 @@ namespace Mono.Linker.Steps
 					AssemblyDefinition assembly = GetAssembly (Context, name);
 
 					if (assembly == null) {
-						Context.LogWarning ($"Could not resolve assembly '{GetAssemblyName (iterator.Current).Name}' specified in {_xmlDocumentLocation}", 2007, _xmlDocumentLocation);
+						Context.LogWarning ($"Could not resolve assembly '{name.Name}'", 2007, _xmlDocumentLocation);
 						continue;
 					}
 
@@ -130,7 +132,7 @@ namespace Mono.Linker.Steps
 
 				if (type == null) {
 					if (warnOnUnresolvedTypes)
-						Context.LogWarning ($"Could not resolve type '{fullname}' specified in {_xmlDocumentLocation}", 2008, _xmlDocumentLocation);
+						Context.LogWarning ($"Could not resolve type '{fullname}'", 2008, _xmlDocumentLocation);
 					continue;
 				}
 
@@ -205,7 +207,7 @@ namespace Mono.Linker.Steps
 			if (!String.IsNullOrEmpty (signature)) {
 				FieldDefinition field = GetField (type, signature);
 				if (field == null) {
-					Context.LogWarning ($"Could not find field '{signature}' in type '{type.GetDisplayName ()}' specified in {_xmlDocumentLocation}", 2012, _xmlDocumentLocation);
+					Context.LogWarning ($"Could not find field '{signature}' on type '{type.GetDisplayName ()}'", 2012, _xmlDocumentLocation);
 					return;
 				}
 
@@ -214,19 +216,18 @@ namespace Mono.Linker.Steps
 
 			string name = GetAttribute (nav, NameAttributeName);
 			if (!String.IsNullOrEmpty (name)) {
-				if (!type.HasFields)
-					return;
-
 				bool foundMatch = false;
-				foreach (FieldDefinition field in type.Fields) {
-					if (field.Name == name) {
-						foundMatch = true;
-						ProcessField (type, field, nav);
+				if (type.HasFields) {
+					foreach (FieldDefinition field in type.Fields) {
+						if (field.Name == name) {
+							foundMatch = true;
+							ProcessField (type, field, nav);
+						}
 					}
 				}
 
 				if (!foundMatch) {
-					Context.LogWarning ($"Could not find field '{name}' in type '{type.GetDisplayName ()}' specified in { _xmlDocumentLocation}", 2012, _xmlDocumentLocation);
+					Context.LogWarning ($"Could not find field '{name}' on type '{type.GetDisplayName ()}'", 2012, _xmlDocumentLocation);
 				}
 			}
 		}
@@ -264,7 +265,7 @@ namespace Mono.Linker.Steps
 			if (!String.IsNullOrEmpty (signature)) {
 				MethodDefinition method = GetMethod (type, signature);
 				if (method == null) {
-					Context.LogWarning ($"Could not find method '{signature}' in type '{type.GetDisplayName ()}' specified in {_xmlDocumentLocation}", 2009, _xmlDocumentLocation);
+					Context.LogWarning ($"Could not find method '{signature}' on type '{type.GetDisplayName ()}'", 2009, _xmlDocumentLocation);
 					return;
 				}
 
@@ -273,19 +274,18 @@ namespace Mono.Linker.Steps
 
 			string name = GetAttribute (nav, NameAttributeName);
 			if (!String.IsNullOrEmpty (name)) {
-				if (!type.HasMethods)
-					return;
-
 				bool foundMatch = false;
-				foreach (MethodDefinition method in type.Methods) {
-					if (name == method.Name) {
-						foundMatch = true;
-						ProcessMethod (type, method, nav, customData);
+				if (type.HasMethods) {
+					foreach (MethodDefinition method in type.Methods) {
+						if (name == method.Name) {
+							foundMatch = true;
+							ProcessMethod (type, method, nav, customData);
+						}
 					}
 				}
 
 				if (!foundMatch) {
-					Context.LogWarning ($"Could not find method '{name}' in type '{type.GetDisplayName ()}' specified in {_xmlDocumentLocation}", 2009, _xmlDocumentLocation);
+					Context.LogWarning ($"Could not find method '{name}' on type '{type.GetDisplayName ()}'", 2009, _xmlDocumentLocation);
 				}
 			}
 		}
@@ -313,7 +313,7 @@ namespace Mono.Linker.Steps
 			if (!String.IsNullOrEmpty (signature)) {
 				EventDefinition @event = GetEvent (type, signature);
 				if (@event == null) {
-					Context.LogWarning ($"Could not find event '{signature}' in type '{type.GetDisplayName ()}' specified in {_xmlDocumentLocation}", 2016, _xmlDocumentLocation);
+					Context.LogWarning ($"Could not find event '{signature}' on type '{type.GetDisplayName ()}'", 2016, _xmlDocumentLocation);
 					return;
 				}
 
@@ -322,9 +322,6 @@ namespace Mono.Linker.Steps
 
 			string name = GetAttribute (nav, NameAttributeName);
 			if (!String.IsNullOrEmpty (name)) {
-				if (!type.HasEvents)
-					return;
-
 				bool foundMatch = false;
 				foreach (EventDefinition @event in type.Events) {
 					if (@event.Name == name) {
@@ -334,7 +331,7 @@ namespace Mono.Linker.Steps
 				}
 
 				if (!foundMatch) {
-					Context.LogWarning ($"Could not find event '{name}' in type '{type.GetDisplayName ()}' specified in {_xmlDocumentLocation}", 2016, _xmlDocumentLocation);
+					Context.LogWarning ($"Could not find event '{name}' on type '{type.GetDisplayName ()}'", 2016, _xmlDocumentLocation);
 				}
 			}
 		}
@@ -372,7 +369,7 @@ namespace Mono.Linker.Steps
 			if (!String.IsNullOrEmpty (signature)) {
 				PropertyDefinition property = GetProperty (type, signature);
 				if (property == null) {
-					Context.LogWarning ($"Could not find property '{signature}' in type '{type.GetDisplayName ()}' specified in {_xmlDocumentLocation}", 2017, _xmlDocumentLocation);
+					Context.LogWarning ($"Could not find property '{signature}' on type '{type.GetDisplayName ()}'", 2017, _xmlDocumentLocation);
 					return;
 				}
 
@@ -381,9 +378,6 @@ namespace Mono.Linker.Steps
 
 			string name = GetAttribute (nav, NameAttributeName);
 			if (!String.IsNullOrEmpty (name)) {
-				if (!type.HasProperties)
-					return;
-
 				bool foundMatch = false;
 				foreach (PropertyDefinition property in type.Properties) {
 					if (property.Name == name) {
@@ -393,7 +387,7 @@ namespace Mono.Linker.Steps
 				}
 
 				if (!foundMatch) {
-					Context.LogWarning ($"Could not find property '{name}' in type '{type.GetDisplayName ()}' specified in {_xmlDocumentLocation}", 2017, _xmlDocumentLocation);
+					Context.LogWarning ($"Could not find property '{name}' on type '{type.GetDisplayName ()}'", 2017, _xmlDocumentLocation);
 				}
 			}
 		}
@@ -424,6 +418,11 @@ namespace Mono.Linker.Steps
 			return GetAttribute (nav, FullNameAttributeName);
 		}
 
+		protected static string GetName (XPathNavigator nav)
+		{
+			return GetAttribute (nav, NameAttributeName);
+		}
+
 		protected static string GetSignature (XPathNavigator nav)
 		{
 			return GetAttribute (nav, SignatureAttributeName);
@@ -435,5 +434,119 @@ namespace Mono.Linker.Steps
 		}
 
 		public override string ToString () => GetType ().Name + ": " + _xmlDocumentLocation;
+
+		public static bool TryConvertValue (string value, TypeReference target, out object result)
+		{
+			switch (target.MetadataType) {
+			case MetadataType.Boolean:
+				if (bool.TryParse (value, out bool bvalue)) {
+					result = bvalue ? 1 : 0;
+					return true;
+				}
+
+				goto case MetadataType.Int32;
+
+			case MetadataType.Byte:
+				if (!byte.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte byteresult))
+					break;
+
+				result = (int) byteresult;
+				return true;
+
+			case MetadataType.SByte:
+				if (!sbyte.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out sbyte sbyteresult))
+					break;
+
+				result = (int) sbyteresult;
+				return true;
+
+			case MetadataType.Int16:
+				if (!short.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out short shortresult))
+					break;
+
+				result = (int) shortresult;
+				return true;
+
+			case MetadataType.UInt16:
+				if (!ushort.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort ushortresult))
+					break;
+
+				result = (int) ushortresult;
+				return true;
+
+			case MetadataType.Int32:
+				if (!int.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int iresult))
+					break;
+
+				result = iresult;
+				return true;
+
+			case MetadataType.UInt32:
+				if (!uint.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint uresult))
+					break;
+
+				result = (int) uresult;
+				return true;
+
+			case MetadataType.Double:
+				if (!double.TryParse (value, NumberStyles.Float, CultureInfo.InvariantCulture, out double dresult))
+					break;
+
+				result = dresult;
+				return true;
+
+			case MetadataType.Single:
+				if (!float.TryParse (value, NumberStyles.Float, CultureInfo.InvariantCulture, out float fresult))
+					break;
+
+				result = fresult;
+				return true;
+
+			case MetadataType.Int64:
+				if (!long.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long lresult))
+					break;
+
+				result = lresult;
+				return true;
+
+			case MetadataType.UInt64:
+				if (!ulong.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong ulresult))
+					break;
+
+				result = (long) ulresult;
+				return true;
+
+			case MetadataType.Char:
+				if (!char.TryParse (value, out char chresult))
+					break;
+
+				result = (int) chresult;
+				return true;
+
+			case MetadataType.String:
+				if (value is string || value == null) {
+					result = value;
+					return true;
+				}
+
+				break;
+
+			case MetadataType.ValueType:
+				if (value is string &&
+					target.Resolve () is var typeDefinition &&
+					typeDefinition.IsEnum) {
+					var enumField = typeDefinition.Fields.Where (f => f.IsStatic && f.Name == value).FirstOrDefault ();
+					if (enumField != null) {
+						result = Convert.ToInt32 (enumField.Constant);
+						return true;
+					}
+				}
+
+				break;
+			}
+
+			result = null;
+			return false;
+		}
 	}
 }
