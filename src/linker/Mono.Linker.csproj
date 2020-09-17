@@ -26,8 +26,8 @@
   
   <ItemGroup>
     <Compile Remove="ref\**\*.cs" />
+    <Compile Include="..\..\external\corert\**\*.cs" />
   </ItemGroup>
-  
   <ItemGroup>
     <Reference Include="Mono.Cecil">
       <SpecificVersion>False</SpecificVersion>

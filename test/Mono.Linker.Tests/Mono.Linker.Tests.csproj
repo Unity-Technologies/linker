@@ -5,7 +5,6 @@
     <LangVersion>latest</LangVersion>
     <OutputType>Library</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <TargetFramework>net471</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
