@@ -6,14 +6,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <LangVersion>Latest</LangVersion>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(MonoBuild)' == ''">
-    <TargetFramework>net5.0</TargetFramework>
-    <DefineConstants>$(DefineConstants);ILLINK</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(MonoBuild)' != ''">
     <TargetFramework>net471</TargetFramework>
   </PropertyGroup>
 
