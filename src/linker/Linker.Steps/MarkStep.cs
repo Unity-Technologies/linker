@@ -581,7 +581,13 @@ namespace Mono.Linker.Steps
 					if (UnconditionalSuppressMessageAttributeState.TypeRefHasUnconditionalSuppressions (ca.Constructor.DeclaringType))
 						_context.Suppressions.AddSuppression (ca, provider);
 
-					if (_context.Annotations.HasLinkerAttribute<RemoveAttributeInstancesAttribute> (ca.AttributeType.Resolve ()) && providerInLinkedAssembly)
+					var resolvedAttributeType = ca.AttributeType.Resolve ();
+					if (resolvedAttributeType == null) {
+						HandleUnresolvedType (ca.AttributeType);
+						continue;
+					}
+
+					if (_context.Annotations.HasLinkerAttribute<RemoveAttributeInstancesAttribute> (resolvedAttributeType) && providerInLinkedAssembly)
 						continue;
 
 					MarkCustomAttribute (ca, reason, sourceLocationMember);
@@ -742,7 +748,7 @@ namespace Mono.Linker.Steps
 
 			TypeDefinition td;
 			if (args.Count >= 2 && args[1].Value is string typeName) {
-				td = TypeNameResolver.ResolveTypeName (assembly ?? context.Module.Assembly, typeName)?.Resolve ();
+				td = _context.TypeNameResolver.ResolveTypeName (assembly ?? context.Module.Assembly, typeName)?.Resolve ();
 				if (td == null) {
 					_context.LogWarning (
 						$"Could not resolve dependency type '{typeName}' specified in a `PreserveDependency` attribute", 2004, context.Resolve ());
@@ -845,19 +851,7 @@ namespace Mono.Linker.Steps
 			if (!provider.HasCustomAttributes)
 				return;
 
-			bool providerInLinkedAssembly = Annotations.GetAction (GetAssemblyFromCustomAttributeProvider (provider)) == AssemblyAction.Link;
-
 			foreach (CustomAttribute ca in provider.CustomAttributes) {
-				TypeDefinition type = ca.AttributeType.Resolve ();
-
-				if (type == null) {
-					HandleUnresolvedType (ca.AttributeType);
-					continue;
-				}
-
-				if (_context.Annotations.HasLinkerAttribute<RemoveAttributeInstancesAttribute> (type) && providerInLinkedAssembly)
-					continue;
-
 				_assemblyLevelAttributes.Enqueue (new AttributeProviderPair (ca, provider));
 			}
 		}
@@ -919,7 +913,7 @@ namespace Mono.Linker.Steps
 			return true;
 		}
 
-		internal protected void MarkStaticConstructor (TypeDefinition type, in DependencyInfo reason, IMemberDefinition sourceLocationMember)
+		protected internal void MarkStaticConstructor (TypeDefinition type, in DependencyInfo reason, IMemberDefinition sourceLocationMember)
 		{
 			if (MarkMethodIf (type.Methods, IsNonEmptyStaticConstructor, reason, sourceLocationMember) != null)
 				Annotations.SetPreservedStaticCtor (type);
@@ -1011,7 +1005,7 @@ namespace Mono.Linker.Steps
 			}
 		}
 
-		PropertyDefinition GetProperty (TypeDefinition type, string propertyname)
+		static PropertyDefinition GetProperty (TypeDefinition type, string propertyname)
 		{
 			while (type != null) {
 				PropertyDefinition property = type.Properties.FirstOrDefault (p => p.Name == propertyname);
@@ -1047,7 +1041,7 @@ namespace Mono.Linker.Steps
 			}
 		}
 
-		FieldDefinition GetField (TypeDefinition type, string fieldname)
+		static FieldDefinition GetField (TypeDefinition type, string fieldname)
 		{
 			while (type != null) {
 				FieldDefinition field = type.Fields.FirstOrDefault (f => f.Name == fieldname);
@@ -1060,7 +1054,7 @@ namespace Mono.Linker.Steps
 			return null;
 		}
 
-		MethodDefinition GetMethodWithNoParameters (TypeDefinition type, string methodname)
+		static MethodDefinition GetMethodWithNoParameters (TypeDefinition type, string methodname)
 		{
 			while (type != null) {
 				MethodDefinition method = type.Methods.FirstOrDefault (m => m.Name == methodname && !m.HasParameters);
@@ -1194,6 +1188,9 @@ namespace Mono.Linker.Steps
 					continue;
 				}
 
+				if (_context.Annotations.HasLinkerAttribute<RemoveAttributeInstancesAttribute> (resolved.DeclaringType) && Annotations.GetAction (GetAssemblyFromCustomAttributeProvider (assemblyLevelAttribute.Provider)) == AssemblyAction.Link)
+					continue;
+
 				if (!ShouldMarkTopLevelCustomAttribute (assemblyLevelAttribute, resolved)) {
 					skippedItems.Add (assemblyLevelAttribute);
 					continue;
@@ -1258,7 +1255,7 @@ namespace Mono.Linker.Steps
 			return markOccurred;
 		}
 
-		internal protected void MarkField (FieldReference reference, DependencyInfo reason)
+		protected internal void MarkField (FieldReference reference, DependencyInfo reason)
 		{
 			if (reference.DeclaringType is GenericInstanceType) {
 				Debug.Assert (reason.Kind == DependencyKind.FieldAccess || reason.Kind == DependencyKind.Ldtoken);
@@ -1360,7 +1357,7 @@ namespace Mono.Linker.Steps
 			MarkMethodsIf (type.Methods, IsSpecialSerializationConstructor, new DependencyInfo (DependencyKind.SerializationMethodForType, type), type);
 		}
 
-		internal protected virtual TypeDefinition MarkTypeVisibleToReflection (TypeReference reference, DependencyInfo reason, IMemberDefinition sourceLocationMember)
+		protected internal virtual TypeDefinition MarkTypeVisibleToReflection (TypeReference reference, DependencyInfo reason, IMemberDefinition sourceLocationMember)
 		{
 			// If a type is visible to reflection, we need to stop doing optimization that could cause observable difference
 			// in reflection APIs. This includes APIs like MakeGenericType (where variant castability of the produced type
@@ -1381,7 +1378,7 @@ namespace Mono.Linker.Steps
 		/// For example if the type is marked due to an instruction in a method's body, this should be the method which body it is.</param>
 		/// <returns>The resolved type definition if the reference can be resolved and if the call ended up actually marking.
 		/// If the type definition was already marked, the method returns null.</returns>
-		internal protected virtual TypeDefinition MarkType (TypeReference reference, DependencyInfo reason, IMemberDefinition sourceLocationMember)
+		protected internal virtual TypeDefinition MarkType (TypeReference reference, DependencyInfo reason, IMemberDefinition sourceLocationMember)
 		{
 #if DEBUG
 			if (!_typeReasons.Contains (reason.Kind))
@@ -1565,10 +1562,10 @@ namespace Mono.Linker.Steps
 					TypeName typeName = TypeParser.ParseTypeName (targetTypeName);
 					if (typeName is AssemblyQualifiedTypeName assemblyQualifiedTypeName) {
 						AssemblyDefinition assembly = _context.GetLoadedAssembly (assemblyQualifiedTypeName.AssemblyName.Name);
-						return TypeNameResolver.ResolveTypeName (assembly, targetTypeName)?.Resolve ();
+						return _context.TypeNameResolver.ResolveTypeName (assembly, targetTypeName)?.Resolve ();
 					}
 
-					return TypeNameResolver.ResolveTypeName (asm, targetTypeName)?.Resolve ();
+					return _context.TypeNameResolver.ResolveTypeName (asm, targetTypeName)?.Resolve ();
 				}
 			}
 
@@ -1582,8 +1579,13 @@ namespace Mono.Linker.Steps
 
 			foreach (CustomAttribute attribute in type.CustomAttributes) {
 				var attrType = attribute.Constructor.DeclaringType;
+				var resolvedAttributeType = attrType.Resolve ();
+				if (resolvedAttributeType == null) {
+					HandleUnresolvedType (attrType);
+					continue;
+				}
 
-				if (_context.Annotations.HasLinkerAttribute<RemoveAttributeInstancesAttribute> (attrType.Resolve ()) && Annotations.GetAction (type.Module.Assembly) == AssemblyAction.Link)
+				if (_context.Annotations.HasLinkerAttribute<RemoveAttributeInstancesAttribute> (resolvedAttributeType) && Annotations.GetAction (type.Module.Assembly) == AssemblyAction.Link)
 					continue;
 
 				switch (attrType.Name) {
@@ -1936,7 +1938,7 @@ namespace Mono.Linker.Steps
 				parameters[1].ParameterType.Name == "StreamingContext";
 		}
 
-		internal protected bool MarkMethodsIf (Collection<MethodDefinition> methods, Func<MethodDefinition, bool> predicate, in DependencyInfo reason, IMemberDefinition sourceLocationMember)
+		protected internal bool MarkMethodsIf (Collection<MethodDefinition> methods, Func<MethodDefinition, bool> predicate, in DependencyInfo reason, IMemberDefinition sourceLocationMember)
 		{
 			bool marked = false;
 			foreach (MethodDefinition method in methods) {
@@ -2266,7 +2268,7 @@ namespace Mono.Linker.Steps
 				MarkMethod (method, reason, sourceLocationMember);
 		}
 
-		internal protected void MarkIndirectlyCalledMethod (MethodDefinition method, in DependencyInfo reason, IMemberDefinition sourceLocationMember)
+		protected internal void MarkIndirectlyCalledMethod (MethodDefinition method, in DependencyInfo reason, IMemberDefinition sourceLocationMember)
 		{
 			MarkMethod (method, reason, sourceLocationMember);
 			Annotations.MarkIndirectlyCalledMethod (method);
@@ -2352,11 +2354,10 @@ namespace Mono.Linker.Steps
 				break;
 			}
 
-			bool markedForCall = (
+			bool markedForCall =
 				reason.Kind == DependencyKind.DirectCall ||
 				reason.Kind == DependencyKind.VirtualCall ||
-				reason.Kind == DependencyKind.Newobj
-			);
+				reason.Kind == DependencyKind.Newobj;
 			if (markedForCall) {
 				// Record declaring type of a called method up-front as a special case so that we may
 				// track at least some method calls that trigger a cctor.
@@ -2666,7 +2667,7 @@ namespace Mono.Linker.Steps
 			}
 		}
 
-		private bool IsComInterop (IMarshalInfoProvider marshalInfoProvider, TypeReference parameterType)
+		private static bool IsComInterop (IMarshalInfoProvider marshalInfoProvider, TypeReference parameterType)
 		{
 			// This is best effort. One can likely find ways how to get COM without triggering these alarms.
 			// AsAny marshalling of a struct with an object-typed field would be one, for example.
@@ -2747,7 +2748,7 @@ namespace Mono.Linker.Steps
 			}
 		}
 
-		internal protected void MarkProperty (PropertyDefinition prop, in DependencyInfo reason)
+		protected internal void MarkProperty (PropertyDefinition prop, in DependencyInfo reason)
 		{
 			Tracer.AddDirectDependency (prop, reason, marked: false);
 			// Consider making this more similar to MarkEvent method?
@@ -2755,7 +2756,7 @@ namespace Mono.Linker.Steps
 			DoAdditionalPropertyProcessing (prop);
 		}
 
-		internal protected virtual void MarkEvent (EventDefinition evt, in DependencyInfo reason)
+		protected internal virtual void MarkEvent (EventDefinition evt, in DependencyInfo reason)
 		{
 			// Record the event without marking it in Annotations.
 			Tracer.AddDirectDependency (evt, reason, marked: false);
@@ -2816,7 +2817,7 @@ namespace Mono.Linker.Steps
 			// If a type could be on the stack in the body and an interface it implements could be on the stack on the body
 			// then we need to mark that interface implementation.  When this occurs it is not safe to remove the interface implementation from the type
 			// even if the type is never instantiated
-			var implementations = MethodBodyScanner.GetReferencedInterfaces (_context.Annotations, body);
+			var implementations = MethodBodyScanner.GetReferencedInterfaces (body);
 			if (implementations == null)
 				return;
 
@@ -2940,7 +2941,7 @@ namespace Mono.Linker.Steps
 		//
 		// Extension point for reflection logic handling customization
 		//
-		protected virtual bool ProcessReflectionDependency (MethodBody body, Instruction instruction)
+		protected internal virtual bool ProcessReflectionDependency (MethodBody body, Instruction instruction)
 		{
 			return false;
 		}
@@ -2953,21 +2954,6 @@ namespace Mono.Linker.Steps
 			if (requiresReflectionMethodBodyScanner) {
 				var scanner = new ReflectionMethodBodyScanner (_context, this);
 				scanner.ScanAndProcessReturnValue (body);
-			}
-
-			var instructions = body.Instructions;
-
-			//
-			// Starting at 1 because all patterns require at least 1 instruction backward lookup
-			//
-			for (var i = 1; i < instructions.Count; i++) {
-				var instruction = instructions[i];
-
-				if (instruction.OpCode != OpCodes.Call && instruction.OpCode != OpCodes.Callvirt)
-					continue;
-
-				if (ProcessReflectionDependency (body, instruction))
-					continue;
 			}
 		}
 

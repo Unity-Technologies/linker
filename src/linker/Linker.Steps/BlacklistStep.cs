@@ -28,12 +28,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Xml;
 using System.Xml.XPath;
-
 using Mono.Cecil;
 
 namespace Mono.Linker.Steps
@@ -151,12 +150,12 @@ namespace Mono.Linker.Steps
 			return new ResolveFromXmlStep (GetExternalDescriptor (resource), resource, assembly, "resource " + resource.Name + " in " + assembly.FullName);
 		}
 
-		IStep GetExternalSubstitutionStep (EmbeddedResource resource, AssemblyDefinition assembly)
+		static IStep GetExternalSubstitutionStep (EmbeddedResource resource, AssemblyDefinition assembly)
 		{
 			return new BodySubstituterStep (GetExternalDescriptor (resource), resource, assembly, "resource " + resource.Name + " in " + assembly.FullName);
 		}
 
-		IStep GetExternalLinkAttributesStep (EmbeddedResource resource, AssemblyDefinition assembly)
+		static IStep GetExternalLinkAttributesStep (EmbeddedResource resource, AssemblyDefinition assembly)
 		{
 			return new LinkAttributesStep (GetExternalDescriptor (resource), resource, assembly, "resource " + resource.Name + " in " + assembly.FullName);
 		}

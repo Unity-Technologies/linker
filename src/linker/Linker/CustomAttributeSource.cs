@@ -2,17 +2,17 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
 using Mono.Cecil;
 
 namespace Mono.Linker
 {
 	public class CustomAttributeSource
 	{
-		private Dictionary<ICustomAttributeProvider, IEnumerable<CustomAttribute>> _xmlCustomAttributes;
-		private Dictionary<ICustomAttributeProvider, IEnumerable<Attribute>> _internalAttributes;
+		private readonly Dictionary<ICustomAttributeProvider, IEnumerable<CustomAttribute>> _xmlCustomAttributes;
+		private readonly Dictionary<ICustomAttributeProvider, IEnumerable<Attribute>> _internalAttributes;
 
 		public CustomAttributeSource ()
 		{

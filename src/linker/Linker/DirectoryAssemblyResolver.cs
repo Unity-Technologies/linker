@@ -6,8 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
-using Mono.Collections.Generic;
 using Mono.Cecil;
+using Mono.Collections.Generic;
 
 #if FEATURE_ILLINK
 namespace Mono.Linker {
@@ -71,9 +71,9 @@ namespace Mono.Linker {
 		public virtual AssemblyDefinition Resolve (AssemblyNameReference name, ReaderParameters parameters)
 		{
 			if (name == null)
-				throw new ArgumentNullException ("name");
+				throw new ArgumentNullException (nameof (name));
 			if (parameters == null)
-				throw new ArgumentNullException ("parameters");
+				throw new ArgumentNullException (nameof (parameters));
 
 			var assembly = SearchDirectory (name, directories, parameters);
 			if (assembly != null)

@@ -1,11 +1,11 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Collections;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Collections.Generic;
-using System.Collections.Generic;
 
 namespace Mono.Linker.Steps
 {
@@ -237,11 +237,11 @@ namespace Mono.Linker.Steps
 
 					var operand = (TypeReference) instr.Operand;
 					if (operand.MetadataType == MetadataType.UIntPtr) {
-						sizeOfImpl = UIntPtrSize ?? (UIntPtrSize = FindSizeMethod (operand.Resolve ()));
+						sizeOfImpl = (UIntPtrSize ??= FindSizeMethod (operand.Resolve ()));
 					}
 
 					if (operand.MetadataType == MetadataType.IntPtr) {
-						sizeOfImpl = IntPtrSize ?? (IntPtrSize = FindSizeMethod (operand.Resolve ()));
+						sizeOfImpl = (IntPtrSize ??= FindSizeMethod (operand.Resolve ()));
 					}
 
 					if (sizeOfImpl != null && constExprMethods.TryGetValue (sizeOfImpl, out targetResult)) {
@@ -591,6 +591,8 @@ namespace Mono.Linker.Steps
 								condBranches = new Stack<int> ();
 
 							condBranches.Push (GetInstructionIndex (handler.HandlerStart));
+							if (handler.FilterStart != null)
+								condBranches.Push (GetInstructionIndex (handler.FilterStart));
 						}
 
 						if (condBranches?.Count > 0) {
@@ -1217,9 +1219,8 @@ namespace Mono.Linker.Steps
 
 			Instruction GetLocalsValue (int index, MethodBody body)
 			{
-				var instr = locals?[index];
-				if (instr != null)
-					return instr;
+				if (locals != null && locals.TryGetValue (index, out Instruction instruction))
+					return instruction;
 
 				if (!body.InitLocals)
 					return null;
