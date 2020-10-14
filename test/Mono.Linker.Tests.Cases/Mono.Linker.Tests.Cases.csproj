@@ -46,11 +46,10 @@
     <None Include="TestFramework\Dependencies\ILAssemblySample.il" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Attributes.StructLayout\" />
     <Folder Include="Reflection\Dependencies\" />
     <Folder Include="BCLFeatures\" />
     <Folder Include="BCLFeatures\ETW\" />
-    <Folder Include="Warnings\WarningSuppression\Dependencies\" />
+    <Folder Include="Warnings\Dependencies\" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="LinkXml\CanPreserveExcludedFeatureCom.xml" />
