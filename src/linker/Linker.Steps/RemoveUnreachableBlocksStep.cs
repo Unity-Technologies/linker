@@ -1,11 +1,11 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Collections;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Collections.Generic;
-using System.Collections.Generic;
 
 namespace Mono.Linker.Steps
 {
@@ -69,12 +69,12 @@ namespace Mono.Linker.Steps
 					case MethodAction.ConvertToStub:
 						var instruction = CodeRewriterStep.CreateConstantResultInstruction (Context, method);
 						if (instruction != null)
-							constExprMethods [method] = instruction;
+							constExprMethods[method] = instruction;
 
 						continue;
 					}
 
-					if (method.IsIntrinsic ())
+					if (method.IsIntrinsic () || method.NoInlining)
 						continue;
 
 					if (constExprMethods.ContainsKey (method))
@@ -85,7 +85,7 @@ namespace Mono.Linker.Steps
 
 					var analyzer = new ConstantExpressionMethodAnalyzer (method);
 					if (analyzer.Analyze ()) {
-						constExprMethods [method] = analyzer.Result;
+						constExprMethods[method] = analyzer.Result;
 					}
 				}
 
@@ -139,10 +139,11 @@ namespace Mono.Linker.Steps
 			// produce folded branches. When it finds them the unreachable
 			// branch is replaced with nops.
 			//
-			if (!reducer.RewriteBody ())
-				return;
+			if (reducer.RewriteBody ())
+				Context.LogMessage ($"Reduced '{reducer.InstructionsReplaced}' instructions in conditional branches for [{method.DeclaringType.Module.Assembly.Name}] method {method.GetDisplayName ()}");
 
-			Context.LogMessage (MessageImportance.Low, $"Reduced '{reducer.InstructionsReplaced}' instructions in conditional branches for [{method.DeclaringType.Module.Assembly.Name}] method {method.FullName}");
+			// Even if the rewriter doesn't find any branches to fold the inlining above may have changed the method enough
+			// such that we can now deduce its return value.
 
 			if (method.ReturnType.MetadataType == MetadataType.Void)
 				return;
@@ -152,7 +153,7 @@ namespace Mono.Linker.Steps
 			//
 			var analyzer = new ConstantExpressionMethodAnalyzer (method, reducer.FoldedInstructions);
 			if (analyzer.Analyze ()) {
-				constExprMethods [method] = analyzer.Result;
+				constExprMethods[method] = analyzer.Result;
 			}
 		}
 
@@ -163,30 +164,56 @@ namespace Mono.Linker.Steps
 			Instruction targetResult;
 
 			for (int i = 0; i < instructions.Count; ++i) {
-				var instr = instructions [i];
+				var instr = instructions[i];
 				switch (instr.OpCode.Code) {
 
 				case Code.Call:
-					var target = (MethodReference)instr.Operand;
+				case Code.Callvirt:
+					var target = (MethodReference) instr.Operand;
 					var md = target.Resolve ();
 					if (md == null)
-						break;
-
-					if (!md.IsStatic)
 						break;
 
 					if (!constExprMethods.TryGetValue (md, out targetResult))
 						break;
 
-					if (md.HasParameters)
+					if (md.CallingConvention == MethodCallingConvention.VarArg)
 						break;
+
+					bool explicitlyAnnotated = Annotations.GetAction (md) == MethodAction.ConvertToStub;
+
+					// Allow inlining results of instance methods which are explicitly annotated
+					// but don't allow inling results of any other instance method.
+					// See https://github.com/mono/linker/issues/1243 for discussion as to why.
+					// Also explicitly prevent inlining results of virtual methods.
+					if (!md.IsStatic &&
+						(md.IsVirtual || !explicitlyAnnotated))
+						break;
+
+					// Allow inlining results of methods with by-value parameters which are explicitly annotated
+					// but don't allow inlining of results of any other method with parameters.
+					if (md.HasParameters) {
+						if (!explicitlyAnnotated)
+							break;
+
+						bool hasByRefParameter = false;
+						foreach (var param in md.Parameters) {
+							if (param.ParameterType.IsByReference) {
+								hasByRefParameter = true;
+								break;
+							}
+						}
+
+						if (hasByRefParameter)
+							break;
+					}
 
 					reducer.Rewrite (i, targetResult);
 					changed = true;
 					break;
 
 				case Code.Ldsfld:
-					var ftarget = (FieldReference)instr.Operand;
+					var ftarget = (FieldReference) instr.Operand;
 					var field = ftarget.Resolve ();
 					if (field == null)
 						break;
@@ -210,11 +237,11 @@ namespace Mono.Linker.Steps
 
 					var operand = (TypeReference) instr.Operand;
 					if (operand.MetadataType == MetadataType.UIntPtr) {
-						sizeOfImpl = UIntPtrSize ?? (UIntPtrSize = FindSizeMethod (operand.Resolve ()));
+						sizeOfImpl = (UIntPtrSize ??= FindSizeMethod (operand.Resolve ()));
 					}
 
 					if (operand.MetadataType == MetadataType.IntPtr) {
-						sizeOfImpl = IntPtrSize ?? (IntPtrSize = FindSizeMethod (operand.Resolve ()));
+						sizeOfImpl = (IntPtrSize ??= FindSizeMethod (operand.Resolve ()));
 					}
 
 					if (sizeOfImpl != null && constExprMethods.TryGetValue (sizeOfImpl, out targetResult)) {
@@ -274,9 +301,9 @@ namespace Mono.Linker.Steps
 
 				// Tracks mapping for replaced instructions for easier
 				// branch targets resolution later
-				mapping [Body.Instructions [index]] = index;
+				mapping[Body.Instructions[index]] = index;
 
-				FoldedInstructions [index] = newInstruction;
+				FoldedInstructions[index] = newInstruction;
 			}
 
 			void RewriteConditionToNop (int index)
@@ -307,11 +334,11 @@ namespace Mono.Linker.Steps
 
 				var bodySweeper = new BodySweeper (Body, reachableInstrs, unreachableEH, context);
 				if (!bodySweeper.Initialize ()) {
-					context.LogMessage (MessageImportance.Low, $"Unreachable IL reduction is not supported for method '{Body.Method.FullName}'");
+					context.LogMessage ($"Unreachable IL reduction is not supported for method '{Body.Method.GetDisplayName ()}'");
 					return false;
 				}
 
-				bodySweeper.Process (conditionInstrsToRemove);
+				bodySweeper.Process (conditionInstrsToRemove, out var nopInstructions);
 				InstructionsReplaced = bodySweeper.InstructionsReplaced;
 				if (InstructionsReplaced == 0)
 					return false;
@@ -319,6 +346,13 @@ namespace Mono.Linker.Steps
 				reachableInstrs = GetReachableInstructionsMap (out _);
 				if (reachableInstrs != null)
 					RemoveUnreachableInstructions (reachableInstrs);
+
+				if (nopInstructions != null) {
+					ILProcessor processor = Body.GetILProcessor ();
+
+					foreach (var instr in nopInstructions)
+						processor.Remove (instr);
+				}
 
 				return true;
 			}
@@ -329,7 +363,7 @@ namespace Mono.Linker.Steps
 
 				int removed = 0;
 				for (int i = 0; i < reachable.Count; ++i) {
-					if (reachable [i])
+					if (reachable[i])
 						continue;
 
 					processor.RemoveAt (i - removed);
@@ -350,7 +384,7 @@ namespace Mono.Linker.Steps
 				// easier processing later (makes the mapping straigh-forward).
 				//
 				for (int i = 0; i < FoldedInstructions.Count; ++i) {
-					var instr = FoldedInstructions [i];
+					var instr = FoldedInstructions[i];
 					var opcode = instr.OpCode;
 
 					if (opcode.FlowControl == FlowControl.Cond_Branch) {
@@ -366,7 +400,7 @@ namespace Mono.Linker.Steps
 								RewriteToNop (i - 1);
 
 								if (IsComparisonAlwaysTrue (opcode, lint, rint)) {
-									Rewrite (i, Instruction.Create (OpCodes.Br, (Instruction)instr.Operand));
+									Rewrite (i, Instruction.Create (OpCodes.Br, (Instruction) instr.Operand));
 								} else {
 									RewriteConditionToNop (i);
 								}
@@ -379,7 +413,7 @@ namespace Mono.Linker.Steps
 						}
 
 						if (opcode.StackBehaviourPop == StackBehaviour.Popi) {
-							if (i > 0 && GetConstantValue (FoldedInstructions [i - 1], out var operand)) {
+							if (i > 0 && GetConstantValue (FoldedInstructions[i - 1], out var operand)) {
 								if (operand is int opint) {
 									if (IsJumpTargetRange (i, i))
 										continue;
@@ -387,7 +421,7 @@ namespace Mono.Linker.Steps
 									RewriteToNop (i - 1);
 
 									if (IsConstantBranch (opcode, opint)) {
-										Rewrite (i, Instruction.Create (OpCodes.Br, (Instruction)instr.Operand));
+										Rewrite (i, Instruction.Create (OpCodes.Br, (Instruction) instr.Operand));
 									} else {
 										RewriteConditionToNop (i);
 									}
@@ -401,14 +435,14 @@ namespace Mono.Linker.Steps
 										continue;
 
 									RewriteToNop (i - 1);
-									Rewrite (i, Instruction.Create (OpCodes.Br, (Instruction)instr.Operand));
+									Rewrite (i, Instruction.Create (OpCodes.Br, (Instruction) instr.Operand));
 									changed = true;
 									continue;
 								}
 							}
 
 							// Common pattern generated by C# compiler in debug mode
-							if (i > 3 && GetConstantValue (FoldedInstructions [i - 3], out operand) && operand is int opint2 && IsPairedStlocLdloc (FoldedInstructions [i - 2], FoldedInstructions [i - 1])) {
+							if (i > 3 && GetConstantValue (FoldedInstructions[i - 3], out operand) && operand is int opint2 && IsPairedStlocLdloc (FoldedInstructions[i - 2], FoldedInstructions[i - 1])) {
 								if (IsJumpTargetRange (i - 2, i))
 									continue;
 
@@ -417,7 +451,7 @@ namespace Mono.Linker.Steps
 								RewriteToNop (i - 1);
 
 								if (IsConstantBranch (opcode, opint2)) {
-									Rewrite (i, Instruction.Create (OpCodes.Br, (Instruction)instr.Operand));
+									Rewrite (i, Instruction.Create (OpCodes.Br, (Instruction) instr.Operand));
 								} else {
 									RewriteConditionToNop (i);
 								}
@@ -488,15 +522,15 @@ namespace Mono.Linker.Steps
 				int i = 0;
 				while (true) {
 					while (i < FoldedInstructions.Count) {
-						if (reachable [i])
+						if (reachable[i])
 							break;
 
-						reachable [i] = true;
-						var instr = FoldedInstructions [i++];
+						reachable[i] = true;
+						var instr = FoldedInstructions[i++];
 
 						switch (instr.OpCode.FlowControl) {
 						case FlowControl.Branch:
-							target = (Instruction)instr.Operand;
+							target = (Instruction) instr.Operand;
 							i = GetInstructionIndex (target);
 							continue;
 
@@ -557,6 +591,8 @@ namespace Mono.Linker.Steps
 								condBranches = new Stack<int> ();
 
 							condBranches.Push (GetInstructionIndex (handler.HandlerStart));
+							if (handler.FilterStart != null)
+								condBranches.Push (GetInstructionIndex (handler.FilterStart));
 						}
 
 						if (condBranches?.Count > 0) {
@@ -572,7 +608,7 @@ namespace Mono.Linker.Steps
 			static bool HasAnyBitSet (BitArray bitArray, int startIndex, int endIndex)
 			{
 				for (int i = startIndex; i <= endIndex; ++i) {
-					if (bitArray [i])
+					if (bitArray[i])
 						return true;
 				}
 
@@ -600,8 +636,8 @@ namespace Mono.Linker.Steps
 				if (index < 2)
 					return false;
 
-				return GetConstantValue (FoldedInstructions [index - 2], out left) &&
-					GetConstantValue (FoldedInstructions [index - 1], out right);
+				return GetConstantValue (FoldedInstructions[index - 2], out left) &&
+					GetConstantValue (FoldedInstructions[index - 1], out right);
 			}
 
 			static bool GetConstantValue (Instruction instruction, out object value)
@@ -638,13 +674,13 @@ namespace Mono.Linker.Steps
 					value = -1;
 					return true;
 				case Code.Ldc_I4:
-					value = (int)instruction.Operand;
+					value = (int) instruction.Operand;
 					return true;
 				case Code.Ldc_I4_S:
-					value = (int)(sbyte)instruction.Operand;
+					value = (int) (sbyte) instruction.Operand;
 					return true;
 				case Code.Ldc_I8:
-					value = (long)instruction.Operand;
+					value = (long) instruction.Operand;
 					return true;
 				case Code.Ldnull:
 					value = null;
@@ -669,7 +705,7 @@ namespace Mono.Linker.Steps
 				case Code.Stloc_S:
 				case Code.Stloc:
 					if (second.OpCode.Code == Code.Ldloc_S || second.OpCode.Code == Code.Ldloc)
-						return ((VariableDefinition)first.Operand).Index == ((VariableDefinition)second.Operand).Index;
+						return ((VariableDefinition) first.Operand).Index == ((VariableDefinition) second.Operand).Index;
 
 					break;
 				}
@@ -739,7 +775,7 @@ namespace Mono.Linker.Steps
 							if (index >= firstInstr && index <= lastInstr)
 								return true;
 						} else {
-							foreach (var rtarget in (Instruction [])instr.Operand) {
+							foreach (var rtarget in (Instruction[]) instr.Operand) {
 								var index = GetInstructionIndex (rtarget);
 								if (index >= firstInstr && index <= lastInstr)
 									return true;
@@ -779,47 +815,23 @@ namespace Mono.Linker.Steps
 			{
 				var instrs = body.Instructions;
 
-				if (body.HasExceptionHandlers) {
-					foreach (var handler in body.ExceptionHandlers) {
-						if (unreachableExceptionHandlers?.Contains (handler) == true)
-							continue;
-
-						// Cecil TryEnd is off by 1 instruction
-						var handlerEnd = handler.TryEnd.Previous;
-
-						switch (handlerEnd.OpCode.Code) {
-						case Code.Leave:
-						case Code.Leave_S:
-							//
-							// Keep original leave to correctly mark handler exit
-							//
-							int index = instrs.IndexOf (handlerEnd);
-							reachable [index] = true;
-							break;
-						default:
-							Debug.Fail ("Exception handler without leave instruction");
-							return false;
-						}
-					}
-				}
-
 				//
 				// Reusing same reachable map and altering it at indexes which
 				// which will remain same during replacement processing
 				//
 				for (int i = 0; i < instrs.Count; ++i) {
-					if (reachable [i])
+					if (reachable[i])
 						continue;
 
-					var instr = instrs [i];
+					var instr = instrs[i];
 					switch (instr.OpCode.Code) {
 					case Code.Nop:
-						reachable [i] = true;
+						reachable[i] = true;
 						continue;
 
 					case Code.Ret:
 						if (i == instrs.Count - 1)
-							reachable [i] = true;
+							reachable[i] = true;
 
 						break;
 					}
@@ -829,7 +841,7 @@ namespace Mono.Linker.Steps
 				return true;
 			}
 
-			public void Process (List<int> conditionInstrsToRemove)
+			public void Process (List<int> conditionInstrsToRemove, out List<Instruction> sentinelNops)
 			{
 				List<VariableDefinition> removedVariablesReferences = null;
 
@@ -839,10 +851,10 @@ namespace Mono.Linker.Steps
 				//
 				var instrs = body.Instructions;
 				for (int i = 0; i < instrs.Count; ++i) {
-					if (reachable [i])
+					if (reachable[i])
 						continue;
 
-					var instr = instrs [i];
+					var instr = instrs[i];
 
 					Instruction newInstr;
 					if (i == instrs.Count - 1) {
@@ -865,6 +877,8 @@ namespace Mono.Linker.Steps
 
 				CleanExceptionHandlers ();
 
+				sentinelNops = null;
+
 				//
 				// Process list of conditional jump which should be removed. They cannot be
 				// replaced with nops as they alter the stack
@@ -874,7 +888,7 @@ namespace Mono.Linker.Steps
 
 					foreach (int instrIndex in conditionInstrsToRemove) {
 						var index = instrIndex + bodyExpansion;
-						var instr = instrs [index];
+						var instr = instrs[index];
 
 						switch (instr.OpCode.StackBehaviourPop) {
 						case StackBehaviour.Pop1_pop1:
@@ -884,9 +898,15 @@ namespace Mono.Linker.Steps
 							//
 							// One of the operands is most likely constant and could just be removed instead of additional pop
 							//
-							if (index > 0 && IsSideEffectFreeLoad (instrs [index - 1])) {
+							if (index > 0 && IsSideEffectFreeLoad (instrs[index - 1])) {
+								var nop = Instruction.Create (OpCodes.Nop);
+
+								if (sentinelNops == null)
+									sentinelNops = new List<Instruction> ();
+								sentinelNops.Add (nop);
+
 								ilprocessor.Replace (index - 1, Instruction.Create (OpCodes.Pop));
-								ilprocessor.Replace (index, Instruction.Create (OpCodes.Nop));
+								ilprocessor.Replace (index, nop);
 							} else {
 								var pop = Instruction.Create (OpCodes.Pop);
 								ilprocessor.Replace (index, pop);
@@ -945,7 +965,7 @@ namespace Mono.Linker.Steps
 						body_variables.RemoveAt (index);
 					} else {
 						var objectType = BCL.FindPredefinedType ("System", "Object", context);
-						body_variables [index].VariableType = objectType ?? throw new NotSupportedException ("Missing predefined 'System.Object' type");
+						body_variables[index].VariableType = objectType ?? throw new NotSupportedException ("Missing predefined 'System.Object' type");
 					}
 				}
 			}
@@ -964,16 +984,16 @@ namespace Mono.Linker.Steps
 				switch (instruction.OpCode.Code) {
 				case Code.Stloc_0:
 				case Code.Ldloc_0:
-					return body.Variables [0];
+					return body.Variables[0];
 				case Code.Stloc_1:
 				case Code.Ldloc_1:
-					return body.Variables [1];
+					return body.Variables[1];
 				case Code.Stloc_2:
 				case Code.Ldloc_2:
-					return body.Variables [2];
+					return body.Variables[2];
 				case Code.Stloc_3:
 				case Code.Ldloc_3:
-					return body.Variables [3];
+					return body.Variables[3];
 				}
 
 				if (instruction.Operand is VariableReference vr)
@@ -1071,7 +1091,7 @@ namespace Mono.Linker.Steps
 
 					case Code.Br_S:
 					case Code.Br:
-						jmpTarget = (Instruction)instr.Operand;
+						jmpTarget = (Instruction) instr.Operand;
 						continue;
 
 					case Code.Ldc_I4:
@@ -1123,7 +1143,7 @@ namespace Mono.Linker.Steps
 						continue;
 					case Code.Ldloc:
 					case Code.Ldloc_S:
-						vr = (VariableReference)instr.Operand;
+						vr = (VariableReference) instr.Operand;
 						linstr = GetLocalsValue (vr.Index, body);
 						if (linstr == null)
 							return false;
@@ -1144,7 +1164,7 @@ namespace Mono.Linker.Steps
 						continue;
 					case Code.Stloc_S:
 					case Code.Stloc:
-						vr = (VariableReference)instr.Operand;
+						vr = (VariableReference) instr.Operand;
 						StoreToLocals (vr.Index);
 						continue;
 
@@ -1199,15 +1219,14 @@ namespace Mono.Linker.Steps
 
 			Instruction GetLocalsValue (int index, MethodBody body)
 			{
-				var instr = locals? [index];
-				if (instr != null)
-					return instr;
+				if (locals != null && locals.TryGetValue (index, out Instruction instruction))
+					return instruction;
 
 				if (!body.InitLocals)
 					return null;
 
 				// local variables don't need to be explicitly initialized
-				return CodeRewriterStep.CreateConstantResultInstruction (body.Variables [index].VariableType);
+				return CodeRewriterStep.CreateConstantResultInstruction (body.Variables[index].VariableType);
 			}
 
 			void PushOnStack (Instruction instruction)
@@ -1223,7 +1242,7 @@ namespace Mono.Linker.Steps
 				if (locals == null)
 					locals = new Dictionary<int, Instruction> ();
 
-				locals [index] = stack_instr.Pop ();
+				locals[index] = stack_instr.Pop ();
 			}
 		}
 	}

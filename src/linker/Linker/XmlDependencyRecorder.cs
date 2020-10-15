@@ -23,12 +23,12 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using Mono.Cecil;
-using Mono.Linker.Steps;
 using System;
 using System.IO;
 using System.IO.Compression;
 using System.Xml;
+using Mono.Cecil;
+using Mono.Linker.Steps;
 
 namespace Mono.Linker
 {
@@ -89,23 +89,30 @@ namespace Mono.Linker
 			stream = null;
 		}
 
+		public void RecordDependency (object target, in DependencyInfo reason, bool marked)
+		{
+			if (reason.Kind == DependencyKind.Unspecified)
+				return;
+
+			// For now, just report a dependency from source to target without noting the DependencyKind.
+			RecordDependency (reason.Source, target, marked);
+		}
+
 		public void RecordDependency (object source, object target, bool marked)
 		{
 			if (!ShouldRecord (source) && !ShouldRecord (target))
 				return;
 
-			// This is a hack to work around a quirk of MarkStep that results in outputting ~6k edges even with the above ShouldRecord checks.
-			// What happens is that due to the method queueing in MarkStep, the dependency chain is broken in many cases.  And in these cases
-			// we end up adding an edge for MarkStep -> <queued Method>
-			// This isn't particularly useful information since it's incomplete, but it's especially not useful in ReducedTracing mode when there is one of these for
-			// every class library method that was queued.
-			if (context.EnableReducedTracing && source is MarkStep && !ShouldRecord (target))
+			// We use a few hacks to work around MarkStep outputting thousands of edges even
+			// with the above ShouldRecord checks. Ideally we would format these into a meaningful format
+			// however I don't think that is worth the effort at the moment.
+
+			// Prevent useless logging of attributes like `e="Other:Mono.Cecil.CustomAttribute"`.
+			if (source is CustomAttribute || target is CustomAttribute)
 				return;
 
-			// This is another hack to prevent useless information from being logged.  With the introduction of interface sweeping there are a lot of edges such as
-			// `e="InterfaceImpl:Mono.Cecil.InterfaceImplementation"` which are useless information.  Ideally we would format the interface implementation into a meaningful format
-			// however I don't think that is worth the effort at the moment.
-			if (target is InterfaceImplementation)
+			// Prevent useless logging of interface implementations like `e="InterfaceImpl:Mono.Cecil.InterfaceImplementation"`.
+			if (source is InterfaceImplementation || target is InterfaceImplementation)
 				return;
 
 			if (source != target) {
@@ -130,7 +137,7 @@ namespace Mono.Linker
 			return false;
 		}
 
-		string TokenString (object o)
+		static string TokenString (object o)
 		{
 			if (o == null)
 				return "N:null";
@@ -158,12 +165,12 @@ namespace Mono.Linker
 		bool WillAssemblyBeModified (AssemblyDefinition assembly)
 		{
 			switch (context.Annotations.GetAction (assembly)) {
-				case AssemblyAction.Link:
-				case AssemblyAction.AddBypassNGen:
-				case AssemblyAction.AddBypassNGenUsed:
-					return true;
-				default:
-					return false;
+			case AssemblyAction.Link:
+			case AssemblyAction.AddBypassNGen:
+			case AssemblyAction.AddBypassNGenUsed:
+				return true;
+			default:
+				return false;
 			}
 		}
 

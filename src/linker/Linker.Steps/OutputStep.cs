@@ -33,14 +33,16 @@ using System.Linq;
 using System.Runtime.Serialization.Json;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
-using Mono.Cecil.PE;
 
-namespace Mono.Linker.Steps {
+namespace Mono.Linker.Steps
+{
 
-	public class OutputStep : BaseStep {
+	public class OutputStep : BaseStep
+	{
 		private static Dictionary<UInt16, TargetArchitecture> architectureMap;
 
-		private enum NativeOSOverride {
+		private enum NativeOSOverride
+		{
 			Apple = 0x4644,
 			FreeBSD = 0xadc4,
 			Linux = 0x7b79,
@@ -50,7 +52,8 @@ namespace Mono.Linker.Steps {
 
 		readonly List<string> assembliesWritten;
 
-		public OutputStep () {
+		public OutputStep ()
+		{
 			assembliesWritten = new List<string> ();
 		}
 
@@ -61,7 +64,7 @@ namespace Mono.Linker.Steps {
 				foreach (var os in Enum.GetValues (typeof (NativeOSOverride))) {
 					ushort osVal = (ushort) (NativeOSOverride) os;
 					foreach (var arch in Enum.GetValues (typeof (TargetArchitecture))) {
-						ushort archVal = (ushort) (TargetArchitecture)arch;
+						ushort archVal = (ushort) (TargetArchitecture) arch;
 						architectureMap.Add ((ushort) (archVal ^ osVal), (TargetArchitecture) arch);
 					}
 				}
@@ -77,6 +80,7 @@ namespace Mono.Linker.Steps {
 		{
 			CheckOutputDirectory ();
 			OutputPInvokes ();
+			OutputSuppressions ();
 			Tracer.Finish ();
 		}
 
@@ -122,7 +126,7 @@ namespace Mono.Linker.Steps {
 			try {
 				assembly.Write (outputName, writerParameters);
 			} catch (Exception e) {
-				throw new OutputException ($"Failed to write '{outputName}", e);
+				throw new LinkerFatalErrorException (MessageContainer.CreateErrorMessage ($"Failed to write '{outputName}", 1011), e);
 			}
 		}
 
@@ -133,19 +137,17 @@ namespace Mono.Linker.Steps {
 			CopyConfigFileIfNeeded (assembly, directory);
 
 			var action = Annotations.GetAction (assembly);
-			Context.LogMessage (MessageImportance.Low, $"Output action: {action,8} assembly: {assembly}");
+			Context.LogMessage ($"Output action: {action,8} assembly: {assembly}");
 
 			switch (action) {
 			case AssemblyAction.Save:
 			case AssemblyAction.Link:
 			case AssemblyAction.AddBypassNGen:
-				Context.Tracer.AddDependency (assembly);
 				WriteAssembly (assembly, directory);
 				CopySatelliteAssembliesIfNeeded (assembly, directory);
 				assembliesWritten.Add (GetOriginalAssemblyFileInfo (assembly).Name);
 				break;
 			case AssemblyAction.Copy:
-				Context.Tracer.AddDependency (assembly);
 				CloseSymbols (assembly);
 				CopyAssembly (assembly, directory);
 				CopySatelliteAssembliesIfNeeded (assembly, directory);
@@ -165,16 +167,23 @@ namespace Mono.Linker.Steps {
 		{
 			if (Context.PInvokesListFile == null)
 				return;
-			
+
 			using (var fs = File.Open (Path.Combine (Context.OutputDirectory, Context.PInvokesListFile), FileMode.Create)) {
-				Context.PInvokes.Distinct ();
-				Context.PInvokes.Sort ();
+				var values = Context.PInvokes.Distinct ().OrderBy (l => l);
 				var jsonSerializer = new DataContractJsonSerializer (typeof (List<PInvokeInfo>));
-				jsonSerializer.WriteObject (fs, Context.PInvokes);
+				jsonSerializer.WriteObject (fs, values);
 			}
 		}
 
-		protected virtual void DeleteAssembly(AssemblyDefinition assembly, string directory)
+		public void OutputSuppressions ()
+		{
+			if (!Context.OutputWarningSuppressions)
+				return;
+
+			Context.WarningSuppressionWriter.OutputSuppressions ();
+		}
+
+		protected virtual void DeleteAssembly (AssemblyDefinition assembly, string directory)
 		{
 			var target = GetAssemblyFileName (assembly, directory);
 			if (File.Exists (target)) {
@@ -259,9 +268,9 @@ namespace Mono.Linker.Steps {
 			return assembly + ".config";
 		}
 
-		static FileInfo GetOriginalAssemblyFileInfo (AssemblyDefinition assembly)
+		FileInfo GetOriginalAssemblyFileInfo (AssemblyDefinition assembly)
 		{
-			return new FileInfo (assembly.MainModule.FileName);
+			return new FileInfo (Context.Resolver.GetAssemblyFileName (assembly));
 		}
 
 		protected virtual void CopyAssembly (AssemblyDefinition assembly, string directory)
@@ -294,7 +303,8 @@ namespace Mono.Linker.Steps {
 				CopyFileAndRemoveReadOnly (pdb, Path.ChangeExtension (target, "pdb"));
 		}
 
-		static void CopyFileAndRemoveReadOnly (string src, string dest) {
+		static void CopyFileAndRemoveReadOnly (string src, string dest)
+		{
 			File.Copy (src, dest, true);
 
 			System.IO.FileAttributes attrs = File.GetAttributes (dest);

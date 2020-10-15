@@ -28,12 +28,18 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Mono.Linker.Dataflow;
 
-namespace Mono.Linker {
+namespace Mono.Linker
+{
 
-	public partial class AnnotationStore {
+	public partial class AnnotationStore
+	{
 
 		protected readonly LinkContext context;
 
@@ -51,18 +57,23 @@ namespace Mono.Linker {
 		protected readonly Dictionary<MethodDefinition, List<OverrideInformation>> override_methods = new Dictionary<MethodDefinition, List<OverrideInformation>> ();
 		protected readonly Dictionary<MethodDefinition, List<MethodDefinition>> base_methods = new Dictionary<MethodDefinition, List<MethodDefinition>> ();
 		protected readonly Dictionary<AssemblyDefinition, ISymbolReader> symbol_readers = new Dictionary<AssemblyDefinition, ISymbolReader> ();
-		protected readonly Dictionary<TypeDefinition, List<TypeDefinition>> class_type_base_hierarchy = new Dictionary<TypeDefinition, List<TypeDefinition>> ();
-		protected readonly Dictionary<TypeDefinition, List<TypeDefinition>> derived_interfaces = new Dictionary<TypeDefinition, List<TypeDefinition>>();
+		readonly Dictionary<IMemberDefinition, LinkerAttributesInformation> linker_attributes = new Dictionary<IMemberDefinition, LinkerAttributesInformation> ();
+		protected readonly Dictionary<MethodDefinition, List<(TypeDefinition InstanceType, InterfaceImplementation ImplementationProvider)>> default_interface_implementations = new Dictionary<MethodDefinition, List<(TypeDefinition, InterfaceImplementation)>> ();
 
-		protected readonly Dictionary<object, Dictionary<IMetadataTokenProvider, object>> custom_annotations = new Dictionary<object, Dictionary<IMetadataTokenProvider, object>> ();
-		protected readonly Dictionary<AssemblyDefinition, HashSet<string>> resources_to_remove = new Dictionary<AssemblyDefinition, HashSet<string>> ();
+		readonly Dictionary<object, Dictionary<IMetadataTokenProvider, object>> custom_annotations = new Dictionary<object, Dictionary<IMetadataTokenProvider, object>> ();
+		protected readonly Dictionary<AssemblyDefinition, HashSet<EmbeddedResource>> resources_to_remove = new Dictionary<AssemblyDefinition, HashSet<EmbeddedResource>> ();
 		protected readonly HashSet<CustomAttribute> marked_attributes = new HashSet<CustomAttribute> ();
 		readonly HashSet<TypeDefinition> marked_types_with_cctor = new HashSet<TypeDefinition> ();
 		protected readonly HashSet<TypeDefinition> marked_instantiated = new HashSet<TypeDefinition> ();
-		protected readonly HashSet<MethodDefinition> indirectly_called = new HashSet<MethodDefinition>();
+		protected readonly HashSet<MethodDefinition> indirectly_called = new HashSet<MethodDefinition> ();
+		protected readonly HashSet<TypeDefinition> types_relevant_to_variant_casting = new HashSet<TypeDefinition> ();
 
-
-		public AnnotationStore (LinkContext context) => this.context = context;
+		public AnnotationStore (LinkContext context)
+		{
+			this.context = context;
+			FlowAnnotations = new FlowAnnotations (context);
+			VirtualMethodsWithAnnotationsToValidate = new HashSet<MethodDefinition> ();
+		}
 
 		public bool ProcessSatelliteAssemblies { get; set; }
 
@@ -71,6 +82,10 @@ namespace Mono.Linker {
 				return context.Tracer;
 			}
 		}
+
+		internal FlowAnnotations FlowAnnotations { get; }
+
+		internal HashSet<MethodDefinition> VirtualMethodsWithAnnotationsToValidate { get; }
 
 		[Obsolete ("Use Tracer in LinkContext directly")]
 		public void PrepareDependenciesDump ()
@@ -94,7 +109,7 @@ namespace Mono.Linker {
 			if (assembly_actions.TryGetValue (assembly, out AssemblyAction action))
 				return action;
 
-			throw new InvalidOperationException($"No action for the assembly {assembly.Name} defined");
+			throw new InvalidOperationException ($"No action for the assembly {assembly.Name} defined");
 		}
 
 		public MethodAction GetAction (MethodDefinition method)
@@ -107,7 +122,7 @@ namespace Mono.Linker {
 
 		public void SetAction (AssemblyDefinition assembly, AssemblyAction action)
 		{
-			assembly_actions [assembly] = action;
+			assembly_actions[assembly] = action;
 		}
 
 		public bool HasAction (AssemblyDefinition assembly)
@@ -117,17 +132,17 @@ namespace Mono.Linker {
 
 		public void SetAction (MethodDefinition method, MethodAction action)
 		{
-			method_actions [method] = action;
+			method_actions[method] = action;
 		}
 
 		public void SetMethodStubValue (MethodDefinition method, object value)
 		{
-			method_stub_values [method] = value;
+			method_stub_values[method] = value;
 		}
 
 		public void SetFieldValue (FieldDefinition field, object value)
 		{
-			field_values [field] = value;
+			field_values[field] = value;
 		}
 
 		public void SetSubstitutedInit (FieldDefinition field)
@@ -150,21 +165,30 @@ namespace Mono.Linker {
 			return fieldType_init.Contains (type);
 		}
 
+		[Obsolete ("Mark token providers with a reason instead.")]
 		public void Mark (IMetadataTokenProvider provider)
 		{
 			marked.Add (provider);
-			Tracer.AddDependency (provider, true);
 		}
 
+		public void Mark (IMetadataTokenProvider provider, in DependencyInfo reason)
+		{
+			Debug.Assert (!(reason.Kind == DependencyKind.AlreadyMarked));
+			marked.Add (provider);
+			Tracer.AddDirectDependency (provider, reason, marked: true);
+		}
+
+		[Obsolete ("Mark attributes with a reason instead.")]
 		public void Mark (CustomAttribute attribute)
 		{
 			marked_attributes.Add (attribute);
 		}
 
-		public void MarkAndPush (IMetadataTokenProvider provider)
+		public void Mark (CustomAttribute attribute, in DependencyInfo reason)
 		{
-			Mark (provider);
-			Tracer.Push (provider, false);
+			Debug.Assert (!(reason.Kind == DependencyKind.AlreadyMarked));
+			marked_attributes.Add (attribute);
+			Tracer.AddDirectDependency (attribute, reason, marked: true);
 		}
 
 		public bool IsMarked (IMetadataTokenProvider provider)
@@ -205,6 +229,17 @@ namespace Mono.Linker {
 			return marked_instantiated.Contains (type);
 		}
 
+		public void MarkRelevantToVariantCasting (TypeDefinition type)
+		{
+			if (type != null)
+				types_relevant_to_variant_casting.Add (type);
+		}
+
+		public bool IsRelevantToVariantCasting (TypeDefinition type)
+		{
+			return types_relevant_to_variant_casting.Contains (type);
+		}
+
 		public void Processed (IMetadataTokenProvider provider)
 		{
 			processed.Add (provider);
@@ -223,7 +258,7 @@ namespace Mono.Linker {
 		public void SetPreserve (TypeDefinition type, TypePreserve preserve)
 		{
 			if (preserved_types.TryGetValue (type, out TypePreserve existing))
-				preserved_types [type] = ChoosePreserveActionWhichPreservesTheMost (existing, preserve);
+				preserved_types[type] = ChoosePreserveActionWhichPreservesTheMost (existing, preserve);
 			else
 				preserved_types.Add (type, preserve);
 		}
@@ -272,20 +307,20 @@ namespace Mono.Linker {
 			return field_values.TryGetValue (field, out value);
 		}
 
-		public HashSet<string> GetResourcesToRemove (AssemblyDefinition assembly)
+		public HashSet<EmbeddedResource> GetResourcesToRemove (AssemblyDefinition assembly)
 		{
-			if (resources_to_remove.TryGetValue (assembly, out HashSet<string> resources))
+			if (resources_to_remove.TryGetValue (assembly, out HashSet<EmbeddedResource> resources))
 				return resources;
 
 			return null;
 		}
 
-		public void AddResourceToRemove (AssemblyDefinition assembly, string name)
+		public void AddResourceToRemove (AssemblyDefinition assembly, EmbeddedResource resource)
 		{
-			if (!resources_to_remove.TryGetValue (assembly, out HashSet<string> resources))
-				resources = resources_to_remove [assembly] = new HashSet<string> ();
+			if (!resources_to_remove.TryGetValue (assembly, out HashSet<EmbeddedResource> resources))
+				resources = resources_to_remove[assembly] = new HashSet<EmbeddedResource> ();
 
-			resources.Add (name);
+			resources.Add (resource);
 		}
 
 		public void SetPublic (IMetadataTokenProvider provider)
@@ -300,21 +335,34 @@ namespace Mono.Linker {
 
 		public void AddOverride (MethodDefinition @base, MethodDefinition @override, InterfaceImplementation matchingInterfaceImplementation = null)
 		{
-			var methods = GetOverrides (@base);
-			if (methods == null) {
+			if (!override_methods.TryGetValue (@base, out List<OverrideInformation> methods)) {
 				methods = new List<OverrideInformation> ();
-				override_methods [@base] = methods;
+				override_methods.Add (@base, methods);
 			}
 
 			methods.Add (new OverrideInformation (@base, @override, matchingInterfaceImplementation));
 		}
 
-		public List<OverrideInformation> GetOverrides (MethodDefinition method)
+		public IEnumerable<OverrideInformation> GetOverrides (MethodDefinition method)
 		{
-			if (override_methods.TryGetValue (method, out List<OverrideInformation> overrides))
-				return overrides;
+			override_methods.TryGetValue (method, out List<OverrideInformation> overrides);
+			return overrides;
+		}
 
-			return null;
+		public void AddDefaultInterfaceImplementation (MethodDefinition @base, TypeDefinition implementingType, InterfaceImplementation matchingInterfaceImplementation)
+		{
+			if (!default_interface_implementations.TryGetValue (@base, out var implementations)) {
+				implementations = new List<(TypeDefinition, InterfaceImplementation)> ();
+				default_interface_implementations.Add (@base, implementations);
+			}
+
+			implementations.Add ((implementingType, matchingInterfaceImplementation));
+		}
+
+		public IEnumerable<(TypeDefinition InstanceType, InterfaceImplementation ProvidingInterface)> GetDefaultInterfaceImplementations (MethodDefinition method)
+		{
+			default_interface_implementations.TryGetValue (method, out var ret);
+			return ret;
 		}
 
 		public void AddBaseMethod (MethodDefinition method, MethodDefinition @base)
@@ -322,7 +370,7 @@ namespace Mono.Linker {
 			var methods = GetBaseMethods (method);
 			if (methods == null) {
 				methods = new List<MethodDefinition> ();
-				base_methods [method] = methods;
+				base_methods[method] = methods;
 			}
 
 			methods.Add (@base);
@@ -369,7 +417,7 @@ namespace Mono.Linker {
 			var methods = GetPreservedMethods (definition);
 			if (methods == null) {
 				methods = new List<MethodDefinition> ();
-				preserved_methods [definition] = methods;
+				preserved_methods[definition] = methods;
 			}
 
 			methods.Add (method);
@@ -377,7 +425,7 @@ namespace Mono.Linker {
 
 		public void AddSymbolReader (AssemblyDefinition assembly, ISymbolReader symbolReader)
 		{
-			symbol_readers [assembly] = symbolReader;
+			symbol_readers[assembly] = symbolReader;
 		}
 
 		public void CloseSymbolReader (AssemblyDefinition assembly)
@@ -389,14 +437,25 @@ namespace Mono.Linker {
 			symbolReader.Dispose ();
 		}
 
-		public Dictionary<IMetadataTokenProvider, object> GetCustomAnnotations (object key)
+		public object GetCustomAnnotation (object key, IMetadataTokenProvider item)
 		{
-			if (custom_annotations.TryGetValue (key, out Dictionary<IMetadataTokenProvider, object> slots))
-				return slots;
+			if (!custom_annotations.TryGetValue (key, out Dictionary<IMetadataTokenProvider, object> slots))
+				return null;
 
-			slots = new Dictionary<IMetadataTokenProvider, object> ();
-			custom_annotations.Add (key, slots);
-			return slots;
+			if (!slots.TryGetValue (item, out object value))
+				return null;
+
+			return value;
+		}
+
+		public void SetCustomAnnotation (object key, IMetadataTokenProvider item, object value)
+		{
+			if (!custom_annotations.TryGetValue (key, out Dictionary<IMetadataTokenProvider, object> slots)) {
+				slots = new Dictionary<IMetadataTokenProvider, object> ();
+				custom_annotations.Add (key, slots);
+			}
+
+			slots[item] = value;
 		}
 
 		public bool HasPreservedStaticCtor (TypeDefinition type)
@@ -409,42 +468,52 @@ namespace Mono.Linker {
 			return marked_types_with_cctor.Add (type);
 		}
 
-		public void SetClassHierarchy (TypeDefinition type, List<TypeDefinition> bases)
+		public bool HasLinkerAttribute<T> (IMemberDefinition member) where T : Attribute
 		{
-			class_type_base_hierarchy [type] = bases;
+			// Avoid setting up and inserting LinkerAttributesInformation for members without attributes.
+			if (!context.CustomAttributes.HasAttributes (member))
+				return false;
+
+			if (!linker_attributes.TryGetValue (member, out var linkerAttributeInformation)) {
+				linkerAttributeInformation = new LinkerAttributesInformation (context, member);
+				linker_attributes.Add (member, linkerAttributeInformation);
+			}
+
+			return linkerAttributeInformation.HasAttribute<T> ();
 		}
 
-		public List<TypeDefinition> GetClassHierarchy (TypeDefinition type)
+		public IEnumerable<T> GetLinkerAttributes<T> (IMemberDefinition member) where T : Attribute
 		{
-			if (class_type_base_hierarchy.TryGetValue (type, out List<TypeDefinition> bases))
-				return bases;
+			// Avoid setting up and inserting LinkerAttributesInformation for members without attributes.
+			if (!context.CustomAttributes.HasAttributes (member))
+				return Enumerable.Empty<T> ();
 
-			return null;
+			if (!linker_attributes.TryGetValue (member, out var linkerAttributeInformation)) {
+				linkerAttributeInformation = new LinkerAttributesInformation (context, member);
+				linker_attributes.Add (member, linkerAttributeInformation);
+			}
+
+			return linkerAttributeInformation.GetAttributes<T> ();
 		}
 
-		public void AddDerivedInterfaceForInterface (TypeDefinition @base, TypeDefinition derived)
+		public bool TryGetLinkerAttribute<T> (IMemberDefinition member, out T attribute) where T : Attribute
 		{
-			if (!@base.IsInterface)
-				throw new ArgumentException ($"{nameof (@base)} must be an interface");
+			var attributes = GetLinkerAttributes<T> (member);
+			if (attributes.Count () > 1) {
+				context.LogWarning ($"Attribute '{typeof (T).FullName}' should only be used once on '{((member is MemberReference memberRef) ? memberRef.GetDisplayName () : member.FullName)}'.", 2027, member);
+			}
 
-			if (!derived.IsInterface)
-				throw new ArgumentException ($"{nameof (derived)} must be an interface");
-
-			if (!derived_interfaces.TryGetValue (@base, out List<TypeDefinition> derivedInterfaces))
-				derived_interfaces [@base] = derivedInterfaces = new List<TypeDefinition> ();
-			
-			derivedInterfaces.Add(derived);
+			attribute = attributes.FirstOrDefault ();
+			return attribute != null;
 		}
 
-		public List<TypeDefinition> GetDerivedInterfacesForInterface (TypeDefinition @interface)
+		public void EnqueueVirtualMethod (MethodDefinition method)
 		{
-			if (!@interface.IsInterface)
-				throw new ArgumentException ($"{nameof (@interface)} must be an interface");
-			
-			if (derived_interfaces.TryGetValue (@interface, out List<TypeDefinition> derivedInterfaces))
-				return derivedInterfaces;
+			if (!method.IsVirtual)
+				return;
 
-			return null;
+			if (FlowAnnotations.RequiresDataFlowAnalysis (method) || HasLinkerAttribute<RequiresUnreferencedCodeAttribute> (method))
+				VirtualMethodsWithAnnotationsToValidate.Add (method);
 		}
 	}
 }

@@ -1,98 +1,43 @@
 ﻿using System;
-using System.IO;
-using System.Linq;
+using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Xml.XPath;
 using Mono.Cecil;
 
 namespace Mono.Linker.Steps
 {
-	public class BodySubstituterStep : BaseStep
+	public class BodySubstituterStep : ProcessLinkerXmlStepBase
 	{
+		public BodySubstituterStep (XPathDocument document, string xmlDocumentLocation)
+			: base (document, xmlDocumentLocation)
+		{
+		}
+
+		public BodySubstituterStep (XPathDocument document, EmbeddedResource resource, AssemblyDefinition resourceAssembly, string xmlDocumentLocation = "")
+			: base (document, resource, resourceAssembly, xmlDocumentLocation)
+		{
+		}
+
 		protected override void Process ()
 		{
-			var files = Context.Substitutions;
-			if (files == null)
-				return;
-
-			foreach (var file in files) {
-				try {
-					ReadSubstitutionFile (GetSubstitutions (file));
-				} catch (Exception ex) when (!(ex is XmlResolutionException)) {
-					throw new XmlResolutionException ($"Failed to process XML substitution '{file}'", ex);
-				}
-
-			}
+			ProcessXml (Context.StripSubstitutions, Context.IgnoreSubstitutions);
 		}
 
-		static XPathDocument GetSubstitutions (string substitutionsFile)
+		protected override void ProcessAssembly (AssemblyDefinition assembly, XPathNodeIterator iterator, bool warnOnUnresolvedTypes)
 		{
-			using (FileStream fs = File.OpenRead (substitutionsFile)) {
-				return GetSubstitutions (fs);
-			}
+			ProcessTypes (assembly, iterator, warnOnUnresolvedTypes);
+			ProcessResources (assembly, iterator.Current.SelectChildren ("resource", ""));
 		}
 
-		static XPathDocument GetSubstitutions (Stream substitutions)
+		protected override TypeDefinition ProcessExportedType (ExportedType exported, AssemblyDefinition assembly) => null;
+
+		protected override bool ProcessTypePattern (string fullname, AssemblyDefinition assembly, XPathNavigator nav) => false;
+
+		protected override void ProcessType (TypeDefinition type, XPathNavigator nav)
 		{
-			using (StreamReader sr = new StreamReader (substitutions)) {
-				return new XPathDocument (sr);
-			}
-		}
+			Debug.Assert (ShouldProcessElement (nav));
 
-		void ReadSubstitutionFile (XPathDocument document)
-		{
-			XPathNavigator nav = document.CreateNavigator ();
-
-			// Initial structure check
-			if (!nav.MoveToChild ("linker", ""))
-				return;
-
-			// TODO: Add handling for feature
-
-			ProcessAssemblies (nav.SelectChildren ("assembly", ""));
-		}
-
-		void ProcessAssemblies (XPathNodeIterator iterator)
-		{
-			while (iterator.MoveNext ()) {
-				var name = GetAssemblyName (iterator.Current);
-
-				var cache = Context.Resolver.AssemblyCache;
-
-				if (!cache.TryGetValue (name.Name, out AssemblyDefinition assembly)) {
-					Context.LogMessage (MessageImportance.Low, $"Could not match assembly '{name.FullName}' for substitution");
-					continue;
-				}
-
-				ProcessAssembly (assembly, iterator);
-			}
-		}
-
-		void ProcessAssembly (AssemblyDefinition assembly, XPathNodeIterator iterator)
-		{
-			ProcessTypes (assembly, iterator.Current.SelectChildren ("type", ""));
-		}
-
-		void ProcessTypes (AssemblyDefinition assembly, XPathNodeIterator iterator)
-		{
-			while (iterator.MoveNext ()) {
-				XPathNavigator nav = iterator.Current;
-
-				string fullname = GetAttribute (nav, "fullname");
-
-				TypeDefinition type = assembly.MainModule.GetType (fullname);
-
-				if (type == null) {
-					Context.LogMessage (MessageImportance.Low, $"Could not resolve type '{fullname}' for substitution");
-					continue;
-				}
-
-				ProcessType (type, nav);
-			}
-		}
-
-		void ProcessType (TypeDefinition type, XPathNavigator nav)
-		{
 			if (!nav.HasChildren)
 				return;
 
@@ -102,15 +47,23 @@ namespace Mono.Linker.Steps
 
 			var fields = nav.SelectChildren ("field", "");
 			if (fields.Count > 0) {
-				while (fields.MoveNext ())
+				while (fields.MoveNext ()) {
+					if (!ShouldProcessElement (fields.Current))
+						continue;
+
 					ProcessField (type, fields);
+				}
 			}
 		}
 
 		void ProcessMethods (TypeDefinition type, XPathNodeIterator iterator)
 		{
-			while (iterator.MoveNext ())
+			while (iterator.MoveNext ()) {
+				if (!ShouldProcessElement (iterator.Current))
+					continue;
+
 				ProcessMethod (type, iterator);
+			}
 		}
 
 		void ProcessMethod (TypeDefinition type, XPathNodeIterator iterator)
@@ -121,7 +74,7 @@ namespace Mono.Linker.Steps
 
 			MethodDefinition method = FindMethod (type, signature);
 			if (method == null) {
-				Context.LogMessage (MessageImportance.Normal, $"Could not find method '{signature}' for substitution");
+				Context.LogWarning ($"Could not find method '{signature}' on type '{type.GetDisplayName ()}'", 2009, _xmlDocumentLocation);
 				return;
 			}
 
@@ -132,9 +85,9 @@ namespace Mono.Linker.Steps
 				return;
 			case "stub":
 				string value = GetAttribute (iterator.Current, "value");
-				if (value != "") {
+				if (!string.IsNullOrEmpty (value)) {
 					if (!TryConvertValue (value, method.ReturnType, out object res)) {
-						Context.LogMessage (MessageImportance.High, $"Invalid value for '{signature}' stub");
+						Context.LogWarning ($"Invalid value for '{method.GetDisplayName ()}' stub", 2010, _xmlDocumentLocation);
 						return;
 					}
 
@@ -144,7 +97,7 @@ namespace Mono.Linker.Steps
 				Annotations.SetAction (method, MethodAction.ConvertToStub);
 				return;
 			default:
-				Context.LogMessage (MessageImportance.High, $"Unknown body modification '{action}' for '{signature}'");
+				Context.LogWarning ($"Unknown body modification '{action}' for '{method.GetDisplayName ()}'", 2011, _xmlDocumentLocation);
 				return;
 			}
 		}
@@ -157,22 +110,22 @@ namespace Mono.Linker.Steps
 
 			var field = type.Fields.FirstOrDefault (f => f.Name == name);
 			if (field == null) {
-				Context.LogMessage (MessageImportance.Normal, $"Could not find field '{name}' for substitution.");
+				Context.LogWarning ($"Could not find field '{name}' on type '{type.GetDisplayName ()}'", 2012, _xmlDocumentLocation);
 				return;
 			}
 
 			if (!field.IsStatic || field.IsLiteral) {
-				Context.LogMessage (MessageImportance.Normal, $"Substituted field '{name}' needs to be static field.");
+				Context.LogWarning ($"Substituted field '{field.GetDisplayName ()}' needs to be static field.", 2013, _xmlDocumentLocation);
 				return;
 			}
 
 			string value = GetAttribute (iterator.Current, "value");
 			if (string.IsNullOrEmpty (value)) {
-				Context.LogMessage (MessageImportance.High, $"Missing 'value' attribute for field '{field}'.");
+				Context.LogWarning ($"Missing 'value' attribute for field '{field.GetDisplayName ()}'.", 2014, _xmlDocumentLocation);
 				return;
 			}
 			if (!TryConvertValue (value, field.FieldType, out object res)) {
-				Context.LogMessage (MessageImportance.High, $"Invalid value for '{field}': '{value}'.");
+				Context.LogWarning ($"Invalid value '{value}' for '{field.GetDisplayName ()}'.", 2015, _xmlDocumentLocation);
 				return;
 			}
 
@@ -184,105 +137,34 @@ namespace Mono.Linker.Steps
 			}
 		}
 
-		static bool TryConvertValue (string value, TypeReference target, out object result)
+		void ProcessResources (AssemblyDefinition assembly, XPathNodeIterator iterator)
 		{
-			switch (target.MetadataType) {
-			case MetadataType.Boolean:
-				if (bool.TryParse (value, out bool bvalue)) {
-					result = bvalue ? 1 : 0;
-					return true;
+			while (iterator.MoveNext ()) {
+				XPathNavigator nav = iterator.Current;
+
+				if (!ShouldProcessElement (nav))
+					continue;
+
+				string name = GetAttribute (nav, "name");
+				if (String.IsNullOrEmpty (name)) {
+					Context.LogWarning ($"Missing 'name' attribute for resource.", 2038, _xmlDocumentLocation);
+					continue;
 				}
 
-				goto case MetadataType.Int32;
-
-			case MetadataType.Byte:
-				if (!byte.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte byteresult))
-					break;
-
-				result = (int) byteresult;
-				return true;
-
-			case MetadataType.SByte:
-				if (!sbyte.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out sbyte sbyteresult))
-					break;
-
-				result = (int) sbyteresult;
-				return true;
-
-			case MetadataType.Int16:
-				if (!short.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out short shortresult))
-					break;
-
-				result = (int) shortresult;
-				return true;
-
-			case MetadataType.UInt16:
-				if (!ushort.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort ushortresult))
-					break;
-
-				result = (int) ushortresult;
-				return true;
-
-			case MetadataType.Int32:
-				if (!int.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int iresult))
-					break;
-
-				result = iresult;
-				return true;
-
-			case MetadataType.UInt32:
-				if (!uint.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint uresult))
-					break;
-
-				result = (int)uresult;
-				return true;
-
-			case MetadataType.Double:
-				if (!double.TryParse (value, NumberStyles.Float, CultureInfo.InvariantCulture, out double dresult))
-					break;
-
-				result = dresult;
-				return true;
-
-			case MetadataType.Single:
-				if (!float.TryParse (value, NumberStyles.Float, CultureInfo.InvariantCulture, out float fresult))
-					break;
-
-				result = fresult;
-				return true;
-
-			case MetadataType.Int64:
-				if (!long.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long lresult))
-					break;
-
-				result = lresult;
-				return true;
-
-			case MetadataType.UInt64:
-				if (!ulong.TryParse (value, NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong ulresult))
-					break;
-
-				result = (long)ulresult;
-				return true;
-
-			case MetadataType.Char:
-				if (!char.TryParse (value, out char chresult))
-					break;
-
-				result = (int) chresult;
-				return true;
-
-			case MetadataType.String:
-				if (value is string || value == null) {
-					result = value;
-					return true;
+				string action = GetAttribute (nav, "action");
+				if (action != "remove") {
+					Context.LogWarning ($"Invalid value '{action}' for attribute 'action' for resource '{name}'.", 2039, _xmlDocumentLocation);
+					continue;
 				}
 
-				break;
+				EmbeddedResource resource = assembly.FindEmbeddedResource (name);
+				if (resource == null) {
+					Context.LogWarning ($"Could not find embedded resource '{name}' to remove in assembly '{assembly.Name.Name}'.", 2040, _xmlDocumentLocation);
+					continue;
+				}
+
+				Context.Annotations.AddResourceToRemove (assembly, resource);
 			}
-
-			result = null;
-			return false;
 		}
 
 		static MethodDefinition FindMethod (TypeDefinition type, string signature)
@@ -297,14 +179,9 @@ namespace Mono.Linker.Steps
 			return null;
 		}
 
-		static AssemblyNameReference GetAssemblyName (XPathNavigator nav)
+		protected override AssemblyDefinition GetAssembly (LinkContext context, AssemblyNameReference assemblyName)
 		{
-			return AssemblyNameReference.Parse (GetAttribute (nav, "fullname"));
-		}
-
-		static string GetAttribute (XPathNavigator nav, string attribute)
-		{
-			return nav.GetAttribute (attribute, "");
+			return context.GetLoadedAssembly (assemblyName.Name);
 		}
 	}
 }

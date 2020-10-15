@@ -3,11 +3,11 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Reflection;
 using System.Collections.Generic;
 using System.IO;
-using Mono.Collections.Generic;
+using System.IO.MemoryMappedFiles;
 using Mono.Cecil;
+using Mono.Collections.Generic;
 
 #if FEATURE_ILLINK
 namespace Mono.Linker {
@@ -16,23 +16,21 @@ namespace Mono.Linker {
 
 		readonly Collection<string> directories;
 
+		protected readonly Dictionary<AssemblyDefinition, string> assemblyToPath = new Dictionary<AssemblyDefinition, string> ();
+
+		readonly List<MemoryMappedViewStream> viewStreams = new List<MemoryMappedViewStream> ();
+
+		readonly ReaderParameters defaultReaderParameters;
+
 		public void AddSearchDirectory (string directory)
 		{
 			directories.Add (directory);
 		}
 
-		public void RemoveSearchDirectory (string directory)
-		{
-			directories.Remove (directory);
-		}
-
-		public string [] GetSearchDirectories ()
-		{
-			return this.directories.ToArray ();
-		}
-
 		protected DirectoryAssemblyResolver ()
 		{
+			defaultReaderParameters = new ReaderParameters ();
+			defaultReaderParameters.AssemblyResolver = this;
 			directories = new Collection<string> (2) { "." };
 		}
 
@@ -41,26 +39,47 @@ namespace Mono.Linker {
 			if (parameters.AssemblyResolver == null)
 				parameters.AssemblyResolver = this;
 
-			return ModuleDefinition.ReadModule (file, parameters).Assembly;
+			MemoryMappedViewStream viewStream = null;
+			try {
+				// Create stream because CreateFromFile(string, ...) uses FileShare.None which is too strict
+				using var fileStream = new FileStream (file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, false);
+				using var mappedFile = MemoryMappedFile.CreateFromFile (
+					fileStream, null, fileStream.Length, MemoryMappedFileAccess.Read, HandleInheritability.None, true);
+				viewStream = mappedFile.CreateViewStream (0, 0, MemoryMappedFileAccess.Read);
+
+				AssemblyDefinition result = ModuleDefinition.ReadModule (viewStream, parameters).Assembly;
+
+				assemblyToPath.Add (result, file);
+
+				viewStreams.Add (viewStream);
+
+				// We transferred the ownership of the viewStream to the collection.
+				viewStream = null;
+
+				return result;
+			} finally {
+				if (viewStream != null)
+					viewStream.Dispose ();
+			}
 		}
 
 		public virtual AssemblyDefinition Resolve (AssemblyNameReference name)
 		{
-			return Resolve (name, new ReaderParameters ());
+			return Resolve (name, defaultReaderParameters);
 		}
 
 		public virtual AssemblyDefinition Resolve (AssemblyNameReference name, ReaderParameters parameters)
 		{
 			if (name == null)
-				throw new ArgumentNullException ("name");
+				throw new ArgumentNullException (nameof (name));
 			if (parameters == null)
-				throw new ArgumentNullException ("parameters");
+				throw new ArgumentNullException (nameof (parameters));
 
 			var assembly = SearchDirectory (name, directories, parameters);
 			if (assembly != null)
 				return assembly;
 
-			throw new AssemblyResolutionException (name);
+			throw new AssemblyResolutionException (name, new FileNotFoundException ($"Unable to find '{name.Name}.dll' or '{name.Name}.exe' file"));
 		}
 
 		AssemblyDefinition SearchDirectory (AssemblyNameReference name, IEnumerable<string> directories, ReaderParameters parameters)
@@ -73,7 +92,7 @@ namespace Mono.Linker {
 						continue;
 					try {
 						return GetAssembly (file, parameters);
-					} catch (System.BadImageFormatException) {
+					} catch (BadImageFormatException) {
 						continue;
 					}
 				}
@@ -90,6 +109,13 @@ namespace Mono.Linker {
 
 		protected virtual void Dispose (bool disposing)
 		{
+			if (disposing) {
+				foreach (var viewStream in viewStreams) {
+					viewStream.Dispose ();
+				}
+
+				viewStreams.Clear ();
+			}
 		}
 	}
 }
