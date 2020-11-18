@@ -235,7 +235,7 @@ namespace Mono.Linker.Steps {
 			foreach (var type in _typesWithInterfaces) {
 				// Exception, types that have not been flagged as instantiated yet.  These types may not need their interfaces even if the
 				// interface type is marked
-				if (!Annotations.IsInstantiated (type))
+				if (!Annotations.IsInstantiated (type) && !Annotations.IsRelevantToVariantCasting (type))
 					continue;
 
 				MarkInterfaceImplementations (type);
@@ -1537,8 +1537,10 @@ namespace Mono.Linker.Steps {
 
 		void MarkGenericArguments (IGenericInstance instance)
 		{
-			foreach (TypeReference argument in instance.GenericArguments)
+			foreach (TypeReference argument in instance.GenericArguments) {
 				MarkType (argument);
+				Annotations.MarkRelevantToVariantCasting (argument.Resolve ());
+			}
 
 			MarkGenericArgumentConstructors (instance);
 		}
@@ -1695,8 +1697,14 @@ namespace Mono.Linker.Steps {
 		{
 			reference = GetOriginalMethod (reference);
 
-			if (reference.DeclaringType is ArrayType)
+			if (reference.DeclaringType is ArrayType arrayType) {
+				MarkType (reference.DeclaringType);
+
+				if (reference.Name == ".ctor") {
+					Annotations.MarkRelevantToVariantCasting (arrayType.Resolve ());
+				}
 				return null;
+			}
 
 			Tracer.Push (reference);
 			if (reference.DeclaringType is GenericInstanceType)
@@ -2105,6 +2113,9 @@ namespace Mono.Linker.Steps {
 					MarkField ((FieldReference) token);
 				break;
 			case OperandType.InlineType:
+				if (instruction.OpCode.Code == Code.Newarr) {
+					Annotations.MarkRelevantToVariantCasting (((TypeReference) instruction.Operand).Resolve ());
+				}
 				MarkType ((TypeReference) instruction.Operand);
 				break;
 			default:
