@@ -60,6 +60,7 @@ namespace Mono.Linker {
 		readonly HashSet<TypeDefinition> marked_types_with_cctor = new HashSet<TypeDefinition> ();
 		protected readonly HashSet<TypeDefinition> marked_instantiated = new HashSet<TypeDefinition> ();
 		protected readonly HashSet<MethodDefinition> indirectly_called = new HashSet<MethodDefinition>();
+		protected readonly HashSet<TypeDefinition> types_relevant_to_variant_casting = new HashSet<TypeDefinition> ();
 
 
 		public AnnotationStore (LinkContext context) => this.context = context;
@@ -218,6 +219,17 @@ namespace Mono.Linker {
 		public bool IsPreserved (TypeDefinition type)
 		{
 			return preserved_types.ContainsKey (type);
+		}
+		
+		public void MarkRelevantToVariantCasting (TypeDefinition type)
+		{
+			if (type != null)
+				types_relevant_to_variant_casting.Add (type);
+		}
+
+		public bool IsRelevantToVariantCasting (TypeDefinition type)
+		{
+			return types_relevant_to_variant_casting.Contains (type);
 		}
 
 		public void SetPreserve (TypeDefinition type, TypePreserve preserve)
