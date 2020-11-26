@@ -1005,8 +1005,7 @@ namespace Mono.Linker.Steps
 
 			if (property != null && _context.Annotations.FlowAnnotations.RequiresDataFlowAnalysis (property.SetMethod)) {
 				var scanner = new ReflectionMethodBodyScanner (_context, this);
-				var caCtor = (ca as CustomAttribute).Constructor.Resolve ();
-				scanner.ProcessAttributeDataflow (caCtor, property.SetMethod, new List<CustomAttributeArgument> { namedArgument.Argument });
+				scanner.ProcessAttributeDataflow (sourceLocationMember, property.SetMethod, new List<CustomAttributeArgument> { namedArgument.Argument });
 			}
 		}
 
@@ -1042,7 +1041,7 @@ namespace Mono.Linker.Steps
 
 			if (field != null && _context.Annotations.FlowAnnotations.RequiresDataFlowAnalysis (field)) {
 				var scanner = new ReflectionMethodBodyScanner (_context, this);
-				scanner.ProcessAttributeDataflow (field, namedArgument.Argument);
+				scanner.ProcessAttributeDataflow (sourceLocationMember, field, namedArgument.Argument);
 			}
 		}
 
