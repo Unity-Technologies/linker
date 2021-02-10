@@ -33,7 +33,9 @@ namespace Mono.Linker.Tests.Cases.BCLFeatures.ETW {
 		[Kept]
 		[ExpectedInstructionSequence (new []
 		{
-			"ret"
+			"ldstr",
+			"newobj",
+			"throw",
 		})]
 		private void Test2 ()
 		{
